@@ -57,6 +57,9 @@ public class nes {
 	
 	public void emulationStart(){
 		reset();
+		while(true){
+			_cpu.excute(10);
+		}
 		
 	}
 }

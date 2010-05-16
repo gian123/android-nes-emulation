@@ -12,11 +12,17 @@ public class memory {
 	 * read memory by cpu
 	 */
 	public byte cpuReadByteFromMem(short address){
-		
+		if ((address & 0xFFFF) < 0x2000 ){
+			return _cpuRam[address & 0x07FF];
+		}
+		else if ((address & 0xFFFF) >= 0x8000 && (address & 0xFFFF) < 0xFFFF){
+			byte value = _rom.prgRom[address & 0xFFFF - 0x8000];
+			return value;
+		}//else if ((address & 0xFFFF) >= 0x8000 && (address & 0xFFFF) < 0xC000)
 		return 0;
 	}
 	
-	public short cpuReadWord(short address){
+	public short cpuReadWordFromMem(short address){
 		
 		if ((address & 0xFFFF) >= 0x8000 && (address & 0xFFFF) < 0xFFFF){
 			byte low = _rom.prgRom[address & 0xFFFF - 0x8000];
@@ -25,5 +31,6 @@ public class memory {
 		}//else if ((address & 0xFFFF) >= 0x8000 && (address & 0xFFFF) < 0xC000)
 		return 0;
 	}
+	
 	
 }

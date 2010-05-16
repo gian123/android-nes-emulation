@@ -3,6 +3,11 @@ public class cpu {
 	private r6502Register _register = new r6502Register();
 	private memory _cpuMemory = null;
 	
+	private byte  _byte_data;
+	private short _word_effectiveAddress;
+	private short _word_temp;
+	private short _word_effectiveAddressTemp;
+	
 	//public cpu(){
 	//	reset();
 	//}
@@ -13,9 +18,21 @@ public class cpu {
 	
 	public void reset(){
 		_register.reset();
-		_register.PC = _cpuMemory.cpuReadWord(r6502Register.RES_VECTOR);
+		_register.PC = _cpuMemory.cpuReadWordFromMem(r6502Register.RES_VECTOR);
 		
 	}
+	
+	private void setCpuFlag(boolean condition, byte flag){
+		if (condition){
+			_register.P |= flag;
+		}
+	}
+	
+	private void memReadImmdiate(){
+		_byte_data = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+	}
+	
+	
 	
 	/*
 	 * run cpu for certain cycles
@@ -26,32 +43,124 @@ public class cpu {
 		byte opCode = 0;
 		opCode = _cpuMemory.cpuReadByteFromMem(_register.PC++);
 		
+		byte byteData;
+		short wordTemp;
+		short effetiveAddress;
 		switch(opCode){
-		case	(byte)0x69: // ADC #$??
+		
+		
+		// ADC #$??
+		case	(byte)0x69: {
+			byteData = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
+			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
+			// overflow .. set when negative + negtive = positive or postive + postive  = negative
+			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
+			excutedCycles += 2;
+		}
 			break;
-		case	(byte)0x65: // ADC $??
+			// ADC $??
+		case	(byte)0x65: {
+			effetiveAddress = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+			byteData = _cpuMemory.cpuReadByteFromMem(effetiveAddress);
+			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
+			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
+			// overflow .. set when negative + negtive = positive or postive + postive  = negative
+			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
+			excutedCycles += 3;
+		}
 			break;
-		case	(byte)0x75: // ADC $??,X
-
+			 // ADC $??,X
+		case	(byte)0x75:{
+			effetiveAddress = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+			effetiveAddress += _register.X;
+			byteData = _cpuMemory.cpuReadByteFromMem(effetiveAddress);
+			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
+			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
+			// overflow .. set when negative + negtive = positive or postive + postive  = negative
+			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
+			excutedCycles += 4;
+		}
 			break;
-		case	(byte)0x6D: // ADC $????
-
+			// ADC $????
+		case	(byte)0x6D: {
+			wordTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
+			_register.PC += 2;
+			byteData = _cpuMemory.cpuReadByteFromMem(wordTemp);
+			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
+			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
+			// overflow .. set when negative + negtive = positive or postive + postive  = negative
+			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
+			excutedCycles += 4;
+		}
 			break;
-		case	(byte)0x7D: // ADC $????,X
-
+			// ADC $????,X
+		case	(byte)0x7D: {
+			wordTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
+			_register.PC += 2;
+			effetiveAddress = (short)(wordTemp + _register.X);
+			byteData = _cpuMemory.cpuReadByteFromMem(effetiveAddress);
+			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
+			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
+			// overflow .. set when negative + negtive = positive or postive + postive  = negative
+			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
+			
+			// CHECK_EA
+			if ((wordTemp & 0xFF00) != (effetiveAddress & 0xFF00))
+				excutedCycles += 1;
+			excutedCycles += 4;
+		}
 			break;
-		case	(byte)0x79: // ADC $????,Y
-
+			 // ADC $????,Y
+		case	(byte)0x79:{
+			wordTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
+			_register.PC += 2;
+			effetiveAddress = (short)(wordTemp + _register.Y);
+			byteData = _cpuMemory.cpuReadByteFromMem(effetiveAddress);
+			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
+			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
+			// overflow .. set when negative + negtive = positive or postive + postive  = negative
+			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
+			
+			// CHECK_EA
+			if ((wordTemp & 0xFF00) != (effetiveAddress & 0xFF00))
+				excutedCycles += 1;
+			excutedCycles += 4;
+		}
 			break;
-		case	(byte)0x61: // ADC ($??,X)
-
+			// ADC ($??,X)
+		case	(byte)0x61: {
+			byteData = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+			effetiveAddress = _cpuMemory.cpuReadByteFromMem((short)(byteData + _register.X));
+			byteData = _cpuMemory.cpuReadByteFromMem(effetiveAddress);
+			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
+			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
+			// overflow .. set when negative + negtive = positive or postive + postive  = negative
+			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
+			excutedCycles += 6;
+		}
 			break;
-		case	(byte)0x71: // ADC ($??),Y
-
+			// ADC ($??),Y
+		case	(byte)0x71: {
+			byteData = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+			effetiveAddress = _cpuMemory.cpuReadByteFromMem(byteData);
+			effetiveAddress += _register.Y;
+			byteData = _cpuMemory.cpuReadByteFromMem(effetiveAddress);
+			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
+			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
+			// overflow .. set when negative + negtive = positive or postive + postive  = negative
+			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
+			
+			// CHECK_EA
+			if ((wordTemp & 0xFF00) != (effetiveAddress & 0xFF00))
+				excutedCycles += 1;
+			excutedCycles += 6;
+		}
 			break;
-
-		case	(byte)0xE9: // SBC #$??
-	
+			// SBC #$??
+		case	(byte)0xE9: {
+			
+		}
 			break;
 		case	(byte)0xE5: // SBC $??
 		
@@ -487,8 +596,10 @@ public class cpu {
 		case	(byte)0xF8: // SED
 			
 			break;
-		case	(byte)0x78: // SEI
-			
+		case	(byte)0x78: { // SEI
+			_register.P |= r6502Register.I_FLAG;
+			excutedCycles += 2;
+		}
 			break;
 
 // スタック系
