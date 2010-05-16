@@ -4,7 +4,8 @@ public class app {
 		
 		nes g_nes = new nes();
 		g_nes.readFromFile("mario.nes");
-		g_nes.reset();
+		//g_nes.reset();
+		g_nes.emulationStart();
 		//rom g_rom = g_nes.readFromFile("mario.nes");
 	}
 }
