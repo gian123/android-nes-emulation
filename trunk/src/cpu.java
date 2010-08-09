@@ -7,6 +7,7 @@ public class cpu {
 	private short _word_effectiveAddress;
 	private short _word_temp;
 	private short _word_effectiveAddressTemp;
+	private int _excutedCycles;
 	
 	//public cpu(){
 	//	reset();
@@ -27,18 +28,114 @@ public class cpu {
 			_register.P |= flag;
 		}
 	}
-	
+
 	private void memReadImmdiate(){
 		_byte_data = _cpuMemory.cpuReadByteFromMem(_register.PC++);
 	}
 	
+	private void memReadZeroPage(){
+		_word_effectiveAddress = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+		_byte_data = _cpuMemory.cpuReadByteZeroPage((byte)_word_effectiveAddress);
+	}
 	
+	private void memReadZeroPageX(){
+  		_word_effectiveAddress = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+  		_word_effectiveAddress += _register.X;
+  		_byte_data = _cpuMemory.cpuReadByteZeroPage((byte)_word_effectiveAddress);
+	}
 	
+	private void memReadZeroPageY(){
+		_word_effectiveAddress = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+  		_word_effectiveAddress += _register.Y;
+  		_byte_data = _cpuMemory.cpuReadByteZeroPage((byte)_word_effectiveAddress);
+	}
+	
+	private void memReadAbsolute(){
+		_word_effectiveAddress = _cpuMemory.cpuReadWordFromMem(_register.PC);
+		_register.PC += 2;
+		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
+	}
+	
+	private void memReadAbsoluteX(){
+		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
+		_register.PC += 2;
+		_word_effectiveAddress = (short)(_word_effectiveAddressTemp + _register.X);
+		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
+	}
+	
+	private void memReadAbsoluteY(){
+		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
+		_register.PC += 2;
+		_word_effectiveAddress = (short)(_word_effectiveAddressTemp + _register.Y);
+		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
+	}
+	
+	private void memReadIndirect(){
+		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
+		_register.PC += 2;
+		_word_effectiveAddress = _cpuMemory.cpuReadWordFromMem(_word_effectiveAddressTemp);
+		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
+	}
+	
+	private void memReadIndexedIndirectX(){
+		_byte_data = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+		_word_effectiveAddress = _cpuMemory.cpuReadWordZeroPage((byte)(_byte_data + _register.X));
+		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
+	}
+	
+	private void memReadIndirectIndexedY(){
+		_byte_data = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordZeroPage(_byte_data);
+		_word_effectiveAddress = (short)(_word_effectiveAddressTemp + _register.Y);
+		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
+	}
+	
+	//
+	// set negative zero flag
+	//
+	private void setNZFlag(byte data){
+		if (data == 0x0)
+			_register.P |= r6502Register.Z_FLAG;
+		if ((data & 0x80) != 0x0)
+			_register.P |= r6502Register.N_FLAG;
+	}
+
+	private void cpuExecADC(){
+		_word_temp = (short)(_byte_data + _register.A + (_register.P & r6502Register.C_FLAG));
+		setCpuFlag(_word_temp > (short)0xFF, r6502Register.C_FLAG);
+		// overflow .. set when negative + negtive = positive or postive + postive  = negative
+		setCpuFlag(((_register.A ^ _word_temp) & (_byte_data ^ _word_temp) & 0x80) != 0, r6502Register.V_FLAG);
+		_register.A = (byte)_word_temp;
+		setNZFlag(_register.A);
+	}
+	
+	//
+	// 
+	//
+	private void cpuExecSBC(){
+		 _word_temp = (short) ((short)_register.A - (short)_byte_data - (short)(~(_register.P & r6502Register.C_FLAG)));
+		 //此处 flag 的设置？？
+		 setCpuFlag(((_register.A ^ _byte_data) & (_register.A ^ _word_temp) & 0x80) != 0, r6502Register.V_FLAG);
+		 setCpuFlag(_word_temp < 0x100, r6502Register.C_FLAG);
+		 //
+		 _register.A = (byte)_word_temp;
+		 setNZFlag(_register.A);
+	}
+	
+	private void cpuExecDec(){
+		--_byte_data;
+		setNZFlag(_byte_data);
+	}
+	
+	private void checkEA(){
+		if ((_word_effectiveAddressTemp & 0xFF00) != (_word_effectiveAddress & 0xFF00))
+			_excutedCycles += 1;
+	}
 	/*
 	 * run cpu for certain cycles
 	 */
 	public void excute(int requestCycles){
-		int excutedCycles = 0;
+		_excutedCycles = 0;
 		
 		byte opCode = 0;
 		opCode = _cpuMemory.cpuReadByteFromMem(_register.PC++);
@@ -51,141 +148,130 @@ public class cpu {
 		
 		// ADC #$??
 		case	(byte)0x69: {
-			byteData = _cpuMemory.cpuReadByteFromMem(_register.PC++);
-			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
-			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
-			// overflow .. set when negative + negtive = positive or postive + postive  = negative
-			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
-			excutedCycles += 2;
+			memReadImmdiate();
+			cpuExecADC();
+			_excutedCycles += 2;
 		}
 			break;
 			// ADC $??
 		case	(byte)0x65: {
-			effetiveAddress = _cpuMemory.cpuReadByteFromMem(_register.PC++);
-			byteData = _cpuMemory.cpuReadByteFromMem(effetiveAddress);
-			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
-			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
-			// overflow .. set when negative + negtive = positive or postive + postive  = negative
-			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
-			excutedCycles += 3;
+			memReadZeroPage();
+			cpuExecADC();
+			_excutedCycles += 3;
 		}
 			break;
 			 // ADC $??,X
 		case	(byte)0x75:{
-			effetiveAddress = _cpuMemory.cpuReadByteFromMem(_register.PC++);
-			effetiveAddress += _register.X;
-			byteData = _cpuMemory.cpuReadByteFromMem(effetiveAddress);
-			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
-			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
-			// overflow .. set when negative + negtive = positive or postive + postive  = negative
-			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
-			excutedCycles += 4;
+			memReadZeroPageX();
+			cpuExecADC();
+			_excutedCycles += 4;
 		}
 			break;
 			// ADC $????
 		case	(byte)0x6D: {
-			wordTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
-			_register.PC += 2;
-			byteData = _cpuMemory.cpuReadByteFromMem(wordTemp);
-			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
-			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
-			// overflow .. set when negative + negtive = positive or postive + postive  = negative
-			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
-			excutedCycles += 4;
+			memReadAbsolute();
+			cpuExecADC();
+			_excutedCycles += 4;
 		}
 			break;
 			// ADC $????,X
 		case	(byte)0x7D: {
-			wordTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
-			_register.PC += 2;
-			effetiveAddress = (short)(wordTemp + _register.X);
-			byteData = _cpuMemory.cpuReadByteFromMem(effetiveAddress);
-			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
-			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
-			// overflow .. set when negative + negtive = positive or postive + postive  = negative
-			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
-			
-			// CHECK_EA
-			if ((wordTemp & 0xFF00) != (effetiveAddress & 0xFF00))
-				excutedCycles += 1;
-			excutedCycles += 4;
+			memReadAbsoluteX();
+			cpuExecADC();
+			checkEA();
+			_excutedCycles += 4;
 		}
 			break;
 			 // ADC $????,Y
 		case	(byte)0x79:{
-			wordTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
-			_register.PC += 2;
-			effetiveAddress = (short)(wordTemp + _register.Y);
-			byteData = _cpuMemory.cpuReadByteFromMem(effetiveAddress);
-			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
-			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
-			// overflow .. set when negative + negtive = positive or postive + postive  = negative
-			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
-			
-			// CHECK_EA
-			if ((wordTemp & 0xFF00) != (effetiveAddress & 0xFF00))
-				excutedCycles += 1;
-			excutedCycles += 4;
+			memReadAbsoluteY();
+			cpuExecADC();
+			checkEA();
+			_excutedCycles += 4;
 		}
 			break;
 			// ADC ($??,X)
 		case	(byte)0x61: {
-			byteData = _cpuMemory.cpuReadByteFromMem(_register.PC++);
-			effetiveAddress = _cpuMemory.cpuReadByteFromMem((short)(byteData + _register.X));
-			byteData = _cpuMemory.cpuReadByteFromMem(effetiveAddress);
-			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
-			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
-			// overflow .. set when negative + negtive = positive or postive + postive  = negative
-			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
-			excutedCycles += 6;
+			memReadIndexedIndirectX();
+			cpuExecADC();
+			_excutedCycles += 6;
 		}
 			break;
 			// ADC ($??),Y
 		case	(byte)0x71: {
-			byteData = _cpuMemory.cpuReadByteFromMem(_register.PC++);
-			effetiveAddress = _cpuMemory.cpuReadByteFromMem(byteData);
-			effetiveAddress += _register.Y;
-			byteData = _cpuMemory.cpuReadByteFromMem(effetiveAddress);
-			wordTemp = (short)(byteData + _register.A + _register.P & (r6502Register.C_FLAG));
-			setCpuFlag(wordTemp > (short)0xFF, r6502Register.C_FLAG);
-			// overflow .. set when negative + negtive = positive or postive + postive  = negative
-			setCpuFlag(((_register.A ^ wordTemp) & (byteData ^ wordTemp) & 0x80) != 0, r6502Register.V_FLAG);
-			
-			// CHECK_EA
-			if ((wordTemp & 0xFF00) != (effetiveAddress & 0xFF00))
-				excutedCycles += 1;
-			excutedCycles += 6;
+			memReadIndirectIndexedY();
+			cpuExecADC();
+			checkEA();
+			_excutedCycles += 6;
 		}
 			break;
 			// SBC #$??
 		case	(byte)0xE9: {
-			
+			memReadImmdiate();
+			cpuExecSBC();
+			_excutedCycles += 2;
 		}
 			break;
-		case	(byte)0xE5: // SBC $??
-		
+			// SBC $??
+		case	(byte)0xE5: {
+			memReadZeroPage();
+			cpuExecSBC();
+			_excutedCycles += 3;
+		}
 			break;
-		case	(byte) 0xF5: // SBC $??,X
+			// SBC $??,X
+		case	(byte) 0xF5: {
+			memReadZeroPageX();
+			cpuExecSBC();
+			_excutedCycles += 4;
+		}
 			
 			break;
-		case	(byte)0xED: // SBC $????
-			
+			// SBC $????
+		case	(byte)0xED:{
+			memReadAbsolute();
+			cpuExecSBC();
+			_excutedCycles += 4;
+		}
 			break;
-		case	(byte)0xFD: // SBC $????,X
-			
+			// SBC $????,X
+		case	(byte)0xFD: {
+			memReadAbsoluteX();
+			cpuExecSBC();
+			checkEA();
+			_excutedCycles += 4;
+		}
 			break;
-		case	(byte)0xF9: // SBC $????,Y
-			
+			// SBC $????,Y
+		case	(byte)0xF9: {
+			memReadAbsoluteY();
+			cpuExecSBC();
+			checkEA();
+			_excutedCycles += 4;
+		}
 			break;
-		case	(byte)0xE1: // SBC ($??,X)
-			
+			// SBC ($??,X)
+		case	(byte)0xE1: {
+			memReadIndexedIndirectX();
+			cpuExecSBC();
+			_excutedCycles += 6;
+		}
 			break;
-		case	(byte)0xF1: // SBC ($??),Y
-			
+			// SBC ($??),Y
+		case	(byte)0xF1: {
+			memReadIndirectIndexedY();
+			cpuExecSBC();
+			checkEA();
+			_excutedCycles += 5;
+		}
 			break;
-
-		case	(byte)0xC6: // DEC $??
 			
+			// DEC $??
+		case	(byte)0xC6: {
+			memReadImmdiate();
+			cpuExecDec();
+			
+		}
 			break;
 		case	(byte)0xD6: // DEC $??,X
 			
@@ -598,7 +684,7 @@ public class cpu {
 			break;
 		case	(byte)0x78: { // SEI
 			_register.P |= r6502Register.I_FLAG;
-			excutedCycles += 2;
+			_excutedCycles += 2;
 		}
 			break;
 
