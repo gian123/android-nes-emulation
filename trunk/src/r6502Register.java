@@ -20,23 +20,7 @@ public class r6502Register {
 	public byte X = 0; 	// index register x
 	public byte Y = 0; 	// index register y
 	public byte P; 		// process status 
-	/*
-	public enum PROCESS_FLAG{
-		C_FLAG   	((byte)0x01),		// 1: Carry
-		Z_FLAG		((byte)0x02),		// 1: Zero
-		I_FLAG		((byte)0x04),		// 1: Irq disabled
-		D_FLAG		((byte)0x08),		// 1: Decimal mode flag (NES unused)
-		B_FLAG		((byte)0x10),		// 1: Break
-		R_FLAG		((byte)0x20),		// 1: Reserved (Always 1)
-		V_FLAG		((byte)0x40),		// 1: Overflow
-		N_FLAG		((byte)0x80);		// 1: Negative
-		
-		private byte _value;
-		PROCESS_FLAG(byte a){
-			_value = a;
-		}
-	}
-	*/
+
 	public void reset(){
 		A = 0;
 		SP = (byte)0xFF;

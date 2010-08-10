@@ -33,6 +33,7 @@ public class cpu {
 		_byte_data = _cpuMemory.cpuReadByteFromMem(_register.PC++);
 	}
 	
+	// zero page addressing
 	private void memReadZeroPage(){
 		_word_effectiveAddress = _cpuMemory.cpuReadByteFromMem(_register.PC++);
 		_byte_data = _cpuMemory.cpuReadByteZeroPage((byte)_word_effectiveAddress);
@@ -49,6 +50,7 @@ public class cpu {
   		_word_effectiveAddress += _register.Y;
   		_byte_data = _cpuMemory.cpuReadByteZeroPage((byte)_word_effectiveAddress);
 	}
+	// end of zero page addressing
 	
 	private void memReadAbsolute(){
 		_word_effectiveAddress = _cpuMemory.cpuReadWordFromMem(_register.PC);
@@ -85,11 +87,18 @@ public class cpu {
 	
 	private void memReadIndirectIndexedY(){
 		_byte_data = _cpuMemory.cpuReadByteFromMem(_register.PC++);
-		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordZeroPage(_byte_data);
+		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordZeroPage(_byte_data); // read from zero page
 		_word_effectiveAddress = (short)(_word_effectiveAddressTemp + _register.Y);
 		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
 	}
 	
+	private void memWriteZeroPage(){
+		_cpuMemory.cpuWriteByteToZeroPage((byte)_word_effectiveAddress, _byte_data);
+	}
+	
+	private void memWriteEffectiveAddress(){
+		_cpuMemory.cpuWriteByteToMem(_word_effectiveAddress, _byte_data);
+	}
 	//
 	// set negative zero flag
 	//
@@ -114,7 +123,7 @@ public class cpu {
 	//
 	private void cpuExecSBC(){
 		 _word_temp = (short) ((short)_register.A - (short)_byte_data - (short)(~(_register.P & r6502Register.C_FLAG)));
-		 //此处 flag 的设置？？
+		 //此处 flag 的设置？？ 检查溢出
 		 setCpuFlag(((_register.A ^ _byte_data) & (_register.A ^ _word_temp) & 0x80) != 0, r6502Register.V_FLAG);
 		 setCpuFlag(_word_temp < 0x100, r6502Register.C_FLAG);
 		 //
@@ -127,6 +136,7 @@ public class cpu {
 		setNZFlag(_byte_data);
 	}
 	
+	// this func is for what ?
 	private void checkEA(){
 		if ((_word_effectiveAddressTemp & 0xFF00) != (_word_effectiveAddress & 0xFF00))
 			_excutedCycles += 1;
@@ -140,9 +150,6 @@ public class cpu {
 		byte opCode = 0;
 		opCode = _cpuMemory.cpuReadByteFromMem(_register.PC++);
 		
-		byte byteData;
-		short wordTemp;
-		short effetiveAddress;
 		switch(opCode){
 		
 		
@@ -268,75 +275,164 @@ public class cpu {
 			
 			// DEC $??
 		case	(byte)0xC6: {
-			memReadImmdiate();
+			memReadZeroPage();
 			cpuExecDec();
-			
+			memWriteZeroPage();
+			_excutedCycles += 5;
 		}
 			break;
-		case	(byte)0xD6: // DEC $??,X
-			
+			// DEC $??,X
+		case	(byte)0xD6: {
+			memReadZeroPageX();
+			cpuExecDec();
+			memWriteZeroPage();
+			_excutedCycles += 6;
+		}
 			break;
-		case	(byte)0xCE: // DEC $????
-			
+			// DEC $????
+		case	(byte)0xCE:{
+			memReadAbsolute();
+			cpuExecDec();
+			memWriteEffectiveAddress();
+			_excutedCycles += 6;
+		}
 			break;
-		case	(byte)0xDE: // DEC $????,X
-			
+			// DEC $????,X
+		case	(byte)0xDE:{
+			memReadAbsoluteX();
+			cpuExecDec();
+			memWriteEffectiveAddress();
+			_excutedCycles += 7;
+		}
 			break;
-
-		case	(byte)0xCA: // DEX
-			
+			// DEX
+		case	(byte)0xCA:{
+			setNZFlag(--_register.X);
+			_excutedCycles += 2;
+		}
 			break;
-		case	(byte)0x88: // DEY
-			
+			// DEY
+		case	(byte)0x88: {
+			setNZFlag(--_register.Y);
+			_excutedCycles += 2;
+		}
 			break;
-
-		case	(byte)0xE6: // INC $??
-			
+			// INC $??
+		case	(byte)0xE6: {
+			memReadZeroPage();
+			setNZFlag(++_byte_data);
+			memWriteZeroPage();
+			_excutedCycles += 5;
+		}
 			break;
-		case	(byte)0xF6: // INC $??,X
-			
+			// INC $??,X
+		case	(byte)0xF6: {
+			memReadZeroPageX();
+			setNZFlag(++_byte_data);
+			memWriteZeroPage();
+			_excutedCycles += 6;
+		}
 			break;
-		case	(byte)0xEE: // INC $????
-			
+			// INC $????
+		case	(byte)0xEE:{
+			memReadAbsolute();
+			setNZFlag(++_byte_data);
+			memWriteEffectiveAddress();
+			_excutedCycles += 6;
+		}
 			break;
-		case	(byte)0xFE: // INC $????,X
-			
+			// INC $????,X
+		case	(byte)0xFE: {
+			memReadAbsoluteX();
+			setNZFlag(++_byte_data);
+			memWriteEffectiveAddress();
+			_excutedCycles += 7;
+		}
 			break;
-
-		case	(byte)0xE8: // INX
-			
+			// INX
+		case	(byte)0xE8: {
+			setNZFlag(++_register.X);
+			_excutedCycles += 2;
+		}
 			break;
-		case	(byte)0xC8: // INY
-			
+			// INY
+		case	(byte)0xC8: {
+			setNZFlag(++_register.Y);
+			_excutedCycles += 2;
+		}
 			break;
-
-		case	(byte)0x29: // AND #$??
-			
+			// AND #$??
+		case	(byte)0x29: {
+			memReadImmdiate();
+			_register.A &= _byte_data;
+			setNZFlag(_register.A);
+			_excutedCycles += 2;
+		}
 			break;
-		case	(byte)0x25: // AND $??
-			
+			// AND $??
+		case	(byte)0x25: {
+			memReadZeroPage();
+			_register.A &= _byte_data;
+			setNZFlag(_register.A);
+			_excutedCycles += 3;
+		}
 			break;
-		case	(byte)0x35: // AND $??,X
-			
+			// AND $??,X
+		case	(byte)0x35: {
+			memReadZeroPageX();
+			_register.A &= _byte_data;
+			setNZFlag(_register.A);
+			_excutedCycles += 4;
+		}
 			break;
-		case	(byte)0x2D: // AND $????
-			
+			// AND $????
+		case	(byte)0x2D: {
+			memReadAbsolute();
+			_register.A &= _byte_data;
+			setNZFlag(_register.A);
+			_excutedCycles += 4;
+		}
 			break;
-		case	(byte)0x3D: // AND $????,X
-			
+			// AND $????,X
+		case	(byte)0x3D: {
+			memReadAbsoluteX();
+			_register.A &= _byte_data;
+			setNZFlag(_register.A);
+			checkEA();
+			_excutedCycles += 4;
+		}
 			break;
-		case	(byte)0x39: // AND $????,Y
-			
+			// AND $????,Y
+		case	(byte)0x39: {
+			memReadAbsoluteY();
+			_register.A &= _byte_data;
+			setNZFlag(_register.A);
+			checkEA();
+			_excutedCycles += 4;
+		}
 			break;
-		case	(byte)0x21: // AND ($??,X)
-			
+			// AND ($??,X)
+		case	(byte)0x21:{
+			memReadIndexedIndirectX();
+			_register.A &= _byte_data;
+			setNZFlag(_register.A);
+			_excutedCycles += 6;
+		}
 			break;
-		case	(byte)0x31: // AND ($??),Y
-			
+			// AND ($??),Y
+		case	(byte)0x31: {
+			memReadIndirectIndexedY();
+			_register.A &= _byte_data;
+			setNZFlag(_register.A);
+			checkEA();
+			_excutedCycles += 6;
+		}
 			break;
-
-		case	(byte)0x0A: // ASL A
 			
+			// ASL A
+		case	(byte)0x0A: {
+			
+		}
 			break;
 		case	(byte)0x06: // ASL $??
 			
@@ -1000,21 +1096,21 @@ public class cpu {
 		case	0x7A: // NOP (Unofficial)
 		case	(byte)0xDA: // NOP (Unofficial)
 		case	(byte)0xFA: // NOP (Unofficial)
-			//ADD_CYCLE(2);
+			_excutedCycles += 2;
 			break;
 		case	(byte)0x80: // DOP (CYCLES 2)
 		case	(byte)0x82: // DOP (CYCLES 2)
 		case	(byte)0x89: // DOP (CYCLES 2)
 		case	(byte)0xC2: // DOP (CYCLES 2)
 		case	(byte)0xE2: // DOP (CYCLES 2)
-			//R.PC++;
-			//ADD_CYCLE(2);
+			_register.PC ++;
+			_excutedCycles += 2;
 			break;
 		case	0x04: // DOP (CYCLES 3)
 		case	0x44: // DOP (CYCLES 3)
 		case	0x64: // DOP (CYCLES 3)
-			//R.PC++;
-			//ADD_CYCLE(3);
+			_register.PC ++;
+			_excutedCycles += 3;
 			break;
 		case	0x14: // DOP (CYCLES 4)
 		case	0x34: // DOP (CYCLES 4)
@@ -1022,8 +1118,8 @@ public class cpu {
 		case	0x74: // DOP (CYCLES 4)
 		case	(byte)0xD4: // DOP (CYCLES 4)
 		case	(byte)0xF4: // DOP (CYCLES 4)
-			//R.PC++;
-			//ADD_CYCLE(4);
+			_register.PC ++;
+			_excutedCycles += 4;
 			break;
 		case	0x0C: // TOP
 		case	0x1C: // TOP
@@ -1032,8 +1128,8 @@ public class cpu {
 		case	0x7C: // TOP
 		case	(byte)0xDC: // TOP
 		case	(byte)0xFC: // TOP
-			//R.PC+=2;
-			//ADD_CYCLE(4);
+			_register.PC += 2;
+			_excutedCycles += 4;
 			break;
 
 		case	0x02:  /* JAM */
