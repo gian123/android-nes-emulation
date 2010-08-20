@@ -11,49 +11,72 @@ namespace control_test
         Graphics _gfx;
         BufferedGraphics _gfxBuffer;
         
+        // 全部区域的rect
         Rectangle _gfxRect = new Rectangle();
+        Point _cursorPoint = new Point();
 
-        private List<graphicRegion> _gRegionList = new List<graphicRegion>();
+
+        private List<graphicRegionView> _gRegionList = new List<graphicRegionView>();
 
         public graphicView()
         {
-            _gfx = this.CreateGraphics();
-            _gfxBuffer = BufferedGraphicsManager.Current.Allocate(_gfx, this.DisplayRectangle);
             constructGraphicRegion();
         }
 
         public void constructGraphicRegion()
         {
             // test code
-            graphicRegion region_one = new graphicRegion();
-            region_one.HeightRate = 1.0f;
+            graphicRegionView region_one = new graphicRegionView("1");
+            region_one.HeightRate = 0.5f;
+            graphicRegionModel regionModel_one = new graphicRegionModel();
+            region_one.setModel(regionModel_one);
             _gRegionList.Add(region_one);
 
-            valueList vlist = new valueList();
-            vlist.initSin();
-            region_one.addValueList(vlist);
-            region_one.setShowRange(0, vlist.getLength());
-
-            //graphicRegion region_two = new graphicRegion();
-            //region_two.HeightRate = 0.5f;
-            //_gRegionList.Add(region_two);
+            
+            graphicRegionView region_two = new graphicRegionView("2");
+            region_two.HeightRate = 0.5f;
+            graphicRegionModel regionModel_two = new graphicRegionModel();
+            region_two.setModel(regionModel_two);
+            _gRegionList.Add(region_two);
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            Graphics gfx = e.Graphics;
-            gfx.Clear(Color.Black);
+            paint();
+        }
+
+        private void paint()
+        {
+            _gfxBuffer.Graphics.Clear(Color.Black);
             for (int i = 0; i < _gRegionList.Count; ++i)
             {
-                _gRegionList[i].onPaint(gfx);
+                _gRegionList[i].CursorPoint = _cursorPoint;
+                _gRegionList[i].onPaint(_gfxBuffer.Graphics);
             }
+            _gfxBuffer.Render();
         }
+
+        //private void drawCrossCursor(Graphics gfx)
+        //{
+        //    Point up   = new Point(_cursorPoint.X, _gfxRect.Top);
+        //    Point down = new Point(_cursorPoint.X, _gfxRect.Bottom);
+        //    Point left = new Point(_gfxRect.Left, _cursorPoint.Y);
+        //    Point right = new Point(_gfxRect.Right, _cursorPoint.Y);
+
+        //    gfx.DrawLine(_cursorPen, up, down);
+        //    gfx.DrawLine(_cursorPen, left, right);
+        //}
 
         protected override void OnResize(EventArgs e)
         {
+            _gfx = this.CreateGraphics();
+            _gfxBuffer = BufferedGraphicsManager.Current.Allocate(_gfx, this.DisplayRectangle);
+
             // refresh the graphic region size
             _gfxRect.Size = this.Size;
             _gfxRect.Location = this.Location;
+            _gfx.SetClip(_gfxRect);
+    
             float top = 0.0f;
             for (int i = 0; i < _gRegionList.Count; ++i)
             {
@@ -77,8 +100,45 @@ namespace control_test
             this.Invalidate();
         }
 
+        private graphicRegionView findFocusedRegion(Point point)
+        {
+            for (int i = 0; i < _gRegionList.Count; ++i)
+            {
+                if (_gRegionList[i].isPointInside(point))
+                    return _gRegionList[i];
+            }
+            return null;
+        }
 
-        
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+
+            if (e.Button == MouseButtons.Left)
+            {
+                valueList vlist = new valueList();
+                vlist.initSin();
+                for (int i = 0; i < _gRegionList.Count; ++i)
+                {
+                    _gRegionList[i].addValueList(vlist);
+                    _gRegionList[i].setShowRange(0, vlist.getLength());
+                }
+            }
+
+            if (e.Button == MouseButtons.Right)
+            {
+                graphicRegionView focusedRegion = findFocusedRegion(e.Location);
+                MessageBox.Show(focusedRegion.getName());
+            }
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            _cursorPoint = e.Location;
+            paint();
+            //drawCrossCursor(_gfxBuffer.Graphics, e.Location);
+        }
 
     }
 }
