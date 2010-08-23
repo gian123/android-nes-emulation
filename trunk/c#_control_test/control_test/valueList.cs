@@ -7,6 +7,8 @@ namespace control_test
     class valueList
     {
         public float[][] values = new float[16][];
+        public float _min = float.MaxValue;
+        public float _max = float.MinValue;
 
         public void initSin()
         {
@@ -36,6 +38,8 @@ namespace control_test
                         min = values[i][j];
                 }
             }
+            _min = min;
+            _max = max;
         }
 
         public int getLength()
@@ -45,7 +49,17 @@ namespace control_test
             return values[0].Length;
         }
 
-
+        public String getValueStr(int index)
+        {
+            String str = "";
+            for (int i = 0; i < values.Length && values[i] != null; ++i)
+            {
+                debuger.assert(index >= 0 && index < values[i].Length);
+                str += values[i][index].ToString("0.00");
+                str += " ";
+            }
+            return str;
+        }
     }
 
 }

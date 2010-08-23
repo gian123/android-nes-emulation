@@ -50,22 +50,11 @@ namespace control_test
             _gfxBuffer.Graphics.Clear(Color.Black);
             for (int i = 0; i < _gRegionList.Count; ++i)
             {
-                _gRegionList[i].CursorPoint = _cursorPoint;
+                _gRegionList[i].CursorPoint = _cursorPoint; // !@!!!!@
                 _gRegionList[i].onPaint(_gfxBuffer.Graphics);
             }
             _gfxBuffer.Render();
         }
-
-        //private void drawCrossCursor(Graphics gfx)
-        //{
-        //    Point up   = new Point(_cursorPoint.X, _gfxRect.Top);
-        //    Point down = new Point(_cursorPoint.X, _gfxRect.Bottom);
-        //    Point left = new Point(_gfxRect.Left, _cursorPoint.Y);
-        //    Point right = new Point(_gfxRect.Right, _cursorPoint.Y);
-
-        //    gfx.DrawLine(_cursorPen, up, down);
-        //    gfx.DrawLine(_cursorPen, left, right);
-        //}
 
         protected override void OnResize(EventArgs e)
         {
@@ -120,6 +109,7 @@ namespace control_test
                 vlist.initSin();
                 for (int i = 0; i < _gRegionList.Count; ++i)
                 {
+                    _gRegionList[i].TitleText = "Sin";
                     _gRegionList[i].addValueList(vlist);
                     _gRegionList[i].setShowRange(0, vlist.getLength());
                 }
@@ -139,6 +129,38 @@ namespace control_test
             paint();
             //drawCrossCursor(_gfxBuffer.Graphics, e.Location);
         }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            switch (keyData)
+            {
+                case Keys.Left:
+                    {
+                        for (int i = 0; i < _gRegionList.Count; ++i)
+                        {
+                            _gRegionList[i].moveCursor(-1);
+                        }
+                        paint();
+                    }
+                    break;
+                case Keys.Right:
+                    {
+                        for (int i = 0; i < _gRegionList.Count; ++i)
+                        {
+                            _gRegionList[i].moveCursor(1);
+                        }
+                        paint();
+                    }
+                    break;
+                case Keys.Up:
+                    break;
+                case Keys.Down:
+                    break;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+
 
     }
 }
