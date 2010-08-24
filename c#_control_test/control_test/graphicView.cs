@@ -8,15 +8,22 @@ namespace control_test
 {
     class graphicView : Control
     {
+        struct dragBorder
+        {
+            public graphicRegionView _upRegion;
+            public graphicRegionView _downRegion;
+            public RectangleF _border;
+        }
+
         Graphics _gfx;
         BufferedGraphics _gfxBuffer;
         
         // 全部区域的rect
-        Rectangle _gfxRect = new Rectangle();
+        Rectangle _rect = new Rectangle();
         Point _cursorPoint = new Point();
 
-
         private List<graphicRegionView> _gRegionList = new List<graphicRegionView>();
+        private List<dragBorder> _dBorderList = new List<dragBorder>();
 
         public graphicView()
         {
@@ -32,7 +39,6 @@ namespace control_test
             region_one.setModel(regionModel_one);
             _gRegionList.Add(region_one);
 
-            
             graphicRegionView region_two = new graphicRegionView("2");
             region_two.HeightRate = 0.5f;
             graphicRegionModel regionModel_two = new graphicRegionModel();
@@ -62,21 +68,32 @@ namespace control_test
             _gfxBuffer = BufferedGraphicsManager.Current.Allocate(_gfx, this.DisplayRectangle);
 
             // refresh the graphic region size
-            _gfxRect.Size = this.Size;
-            _gfxRect.Location = this.Location;
-            _gfx.SetClip(_gfxRect);
-    
+            _rect.Size = this.Size;
+            _rect.Location = this.Location;
+            _gfx.SetClip(_rect);
+
+            resetRegionRect();
+
+            this.Invalidate();
+        }
+
+        /// <summary>
+        /// 重置
+        /// </summary>
+        private void resetRegionRect()
+        {
+            _dBorderList.Clear();
             float top = 0.0f;
             for (int i = 0; i < _gRegionList.Count; ++i)
             {
                 RectangleF rect = new RectangleF();
                 PointF location = new PointF();
                 SizeF size = new SizeF();
-                location.X = (float)_gfxRect.Left;
-                size.Width = (float)_gfxRect.Width;
+                location.X = (float)_rect.Left;
+                size.Width = (float)_rect.Width;
 
                 location.Y = top;
-                float height = _gfxRect.Height * _gRegionList[i].HeightRate;
+                float height = _rect.Height * _gRegionList[i].HeightRate;
                 size.Height = height;
 
                 top += height;
@@ -84,10 +101,36 @@ namespace control_test
                 rect.Location = location;
 
                 _gRegionList[i].Rect = rect;
-            }
 
-            this.Invalidate();
+                if (i > 0)
+                {
+                    dragBorder dborder = new dragBorder();
+                    PointF dLocation = _gRegionList[i].Rect.Location;
+                    SizeF dSize = _gRegionList[i].Rect.Size;
+                    dLocation.Y -= 5;
+                    dSize.Height = 10; // 10像素拖动区域
+                    dborder._border = new RectangleF(dLocation, dSize);
+                    dborder._upRegion = _gRegionList[i - 1];
+                    dborder._downRegion = _gRegionList[i];
+                    _dBorderList.Add(dborder);
+                }
+            }
         }
+
+        private bool isInsideBorder(Point point, out int index)
+        {
+            index = -1;
+            for (int i = 0; i < _dBorderList.Count; ++i)
+            {
+                if (_dBorderList[i]._border.Contains(point))
+                {
+                    index = i;
+                    return true;
+                }
+            }
+            return false;
+        }
+
 
         private graphicRegionView findFocusedRegion(Point point)
         {
@@ -103,7 +146,7 @@ namespace control_test
         {
             base.OnMouseDown(e);
 
-            if (e.Button == MouseButtons.Left)
+            if (e.Button == MouseButtons.Right)
             {
                 valueList vlist = new valueList();
                 vlist.initSin();
@@ -115,7 +158,7 @@ namespace control_test
                 }
             }
 
-            if (e.Button == MouseButtons.Right)
+            if (e.Button == MouseButtons.Left)
             {
                 graphicRegionView focusedRegion = findFocusedRegion(e.Location);
                 MessageBox.Show(focusedRegion.getName());
@@ -126,8 +169,12 @@ namespace control_test
         {
             base.OnMouseMove(e);
             _cursorPoint = e.Location;
+            int index;
+            if (isInsideBorder(_cursorPoint, out index))
+            {
+                Cursor.Current = Cursors.SizeNS;
+            }
             paint();
-            //drawCrossCursor(_gfxBuffer.Graphics, e.Location);
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -140,6 +187,7 @@ namespace control_test
                         {
                             _gRegionList[i].moveCursor(-1);
                         }
+                        _cursorPoint = _gRegionList[0].CursorPoint;
                         paint();
                     }
                     break;
@@ -149,6 +197,7 @@ namespace control_test
                         {
                             _gRegionList[i].moveCursor(1);
                         }
+                        _cursorPoint = _gRegionList[0].CursorPoint;
                         paint();
                     }
                     break;

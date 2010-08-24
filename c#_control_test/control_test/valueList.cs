@@ -29,7 +29,6 @@ namespace control_test
             max = float.MinValue;
             for (int i = 0; i < values.Length && values[i] != null; ++i)
             {
-                
                 for (int j = beginIndex; j < endIndex; ++j)
                 {
                     if (values[i][j] > max)
