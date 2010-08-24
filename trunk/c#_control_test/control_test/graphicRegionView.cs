@@ -95,9 +95,15 @@ namespace control_test
             get { return _rect; }
         }
 
+        public RectangleF GfxRect
+        {
+            get { return _gfxRect; }
+        }
+
         public Point CursorPoint
         {
             set { _cursorPoint = value; }
+            get { return _cursorPoint; }
         }
 
         public String TitleText
@@ -312,7 +318,6 @@ namespace control_test
                 {
                     _vStatues._showBeginIndex += step;
                     _vStatues._showEndIndex += step;
-                    //paintAll();
                 }
                 else
                     return;
@@ -326,14 +331,12 @@ namespace control_test
                 {
                     _vStatues._showBeginIndex += step;
                     _vStatues._showEndIndex += step;
-                    //paintAll();
                 }
                 else
                     return;
             }
             else
                 _cursorPoint.X = (int)tmpX;
-            //paintAll();
         }
 
         /// <summary>
