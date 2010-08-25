@@ -15,6 +15,8 @@ namespace control_test
             public RectangleF _border;
         }
 
+        Pen _dragPen = new Pen(Color.Red);
+
         Graphics _gfx;
         BufferedGraphics _gfxBuffer;
         
@@ -24,6 +26,10 @@ namespace control_test
 
         private List<graphicRegionView> _gRegionList = new List<graphicRegionView>();
         private List<dragBorder> _dBorderList = new List<dragBorder>();
+        private bool _isDraggingBorder = false;
+        private int _dragBorderIndex;
+
+        private graphicRegionControl _regionControl = new graphicRegionControl();
 
         public graphicView()
         {
@@ -35,15 +41,17 @@ namespace control_test
             // test code
             graphicRegionView region_one = new graphicRegionView("1");
             region_one.HeightRate = 0.5f;
-            graphicRegionModel regionModel_one = new graphicRegionModel();
-            region_one.setModel(regionModel_one);
+            graphicRegionStatus regionModel_one = new graphicRegionStatus();
+            region_one.setStatus(regionModel_one);
             _gRegionList.Add(region_one);
 
             graphicRegionView region_two = new graphicRegionView("2");
             region_two.HeightRate = 0.5f;
-            graphicRegionModel regionModel_two = new graphicRegionModel();
-            region_two.setModel(regionModel_two);
+            graphicRegionStatus regionModel_two = new graphicRegionStatus();
+            region_two.setStatus(regionModel_two);
             _gRegionList.Add(region_two);
+
+            _regionControl.setRegionViewList(_gRegionList);
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -59,6 +67,7 @@ namespace control_test
                 _gRegionList[i].CursorPoint = _cursorPoint; // !@!!!!@
                 _gRegionList[i].onPaint(_gfxBuffer.Graphics);
             }
+            drawDraggingLine(_gfxBuffer.Graphics);
             _gfxBuffer.Render();
         }
 
@@ -160,8 +169,11 @@ namespace control_test
 
             if (e.Button == MouseButtons.Left)
             {
-                graphicRegionView focusedRegion = findFocusedRegion(e.Location);
-                MessageBox.Show(focusedRegion.getName());
+                if (isInsideBorder(_cursorPoint, out _dragBorderIndex))
+                {
+                    _isDraggingBorder = true;
+                    _regionControl.setCrossCursor(false);
+                }
             }
         }
 
@@ -169,12 +181,63 @@ namespace control_test
         {
             base.OnMouseMove(e);
             _cursorPoint = e.Location;
-            int index;
-            if (isInsideBorder(_cursorPoint, out index))
+            dragMove();
+            paint();
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (_isDraggingBorder)
+            {
+                _isDraggingBorder = false;
+                _regionControl.setCrossCursor(true);
+                dragBorder dBorder = _dBorderList[_dragBorderIndex];
+                dBorder._border.Y = _cursorPoint.Y;
+
+                RectangleF rect = dBorder._upRegion.Rect;
+                SizeF size = dBorder._upRegion.Rect.Size;
+                size.Height = _cursorPoint.Y - dBorder._upRegion.Rect.Top;
+                rect.Size = size;
+                dBorder._upRegion.Rect = rect;
+
+                rect = dBorder._downRegion.Rect;
+                size = dBorder._downRegion.Rect.Size;
+                size.Height = dBorder._downRegion.Rect.Bottom - _cursorPoint.Y;
+                rect.Size = size;
+                dBorder._downRegion.Rect = rect;
+
+                paint();
+            }
+        }
+
+        private void drawDraggingLine(Graphics gfx)
+        {
+            if (_isDraggingBorder)
+            {
+                Point p1 = new Point(_rect.Left, _cursorPoint.Y);
+                Point p2 = new Point(_rect.Right, _cursorPoint.Y);
+                gfx.DrawLine(_dragPen, p1, p2);
+            }
+        }
+
+        /// <summary>
+        /// 处理边界拖动事件
+        /// </summary>
+        private void dragMove()
+        {
+            if (_isDraggingBorder)
             {
                 Cursor.Current = Cursors.SizeNS;
             }
-            paint();
+            else
+            {
+                int index;
+                if (isInsideBorder(_cursorPoint, out index))
+                {
+                    Cursor.Current = Cursors.SizeNS;
+                }
+            }
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)

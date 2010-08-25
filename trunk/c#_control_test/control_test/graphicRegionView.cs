@@ -38,6 +38,10 @@ namespace control_test
         /// </summary>
         private RectangleF _gfxRect;
 
+        //private RectangleF _parentRect;
+
+        public const float MIN_HEIGHT = 30;
+
         private String _titleText;
         /// <summary>
         /// 浮动标签条宽度
@@ -45,12 +49,10 @@ namespace control_test
         private int _valueLabelWidth = 50;
         private int _titleTxtHeight = 10;
 
-
         private Pen _borderPen = new Pen(Color.White);
         private Pen _cursorPen = new Pen(Color.Blue);
         private Font _defaultFont = new Font("system", 10, FontStyle.Regular);
         private SolidBrush _fontBrush = new SolidBrush(Color.Green);
-
 
         private Graphics _gfx = null;
         private Point _cursorPoint = new Point();
@@ -60,7 +62,7 @@ namespace control_test
 
         private regionValueStatus _vStatues = new regionValueStatus();
 
-        private graphicRegionModel _model = null;
+        private graphicRegionStatus _status = null;
 
         public float HeightRate
         {
@@ -73,12 +75,16 @@ namespace control_test
             get { return _heightRate; }
         }
 
+        //public RectangleF ParentRect
+        //{
+        //    set { _parentRect = value; }
+        //}
+
         public RectangleF Rect
         {
             set 
             { 
                 _rect = value;
-                //_gfxRect = _rect;
                 PointF location = _rect.Location;
                 SizeF size = _rect.Size;
 
@@ -127,16 +133,21 @@ namespace control_test
         }
 
 
-        public void setModel(graphicRegionModel model)
+        public void setStatus(graphicRegionStatus status)
         {
-            _model = model;
-            model.onValueChanged += new graphicRegionModel.valueChanged(filterValues);
+            _status = status;
+            _status.onValueChanged += new graphicRegionStatus.valueChanged(filterValues);
+        }
+
+        public graphicRegionStatus getStatus()
+        {
+            return _status;
         }
 
         public void addValueList(valueList list)
         {
-            if (_model != null)
-                _model.addValueList(list);
+            if (_status != null)
+                _status.addValueList(list);
         }
 
         public void setShowRange(int beginIndex, int endIndex)
@@ -166,7 +177,8 @@ namespace control_test
 
             filterValues(); // 需移除出该函数
             drawBorder();
-            drawCrossCursorAndLabel();
+            if (_status.IsDrawCrossCursor)
+                drawCrossCursorAndLabel();
             drawTitle();
             drawLines();
         }
@@ -222,7 +234,7 @@ namespace control_test
         {
             string title = _titleText + " ";
             int index = getXIndex(_cursorPoint);
-            List<valueList> vList = _model.getValueList(); 
+            List<valueList> vList = _status.getValueList(); 
             for (int i = 0; i < vList.Count; ++i)
             {
                 title += vList[i].getValueStr(index);
@@ -237,15 +249,15 @@ namespace control_test
         /// </summary>
         private void filterValues()
         {
-            debuger.assert(_model != null);
+            debuger.assert(_status != null);
 
-            if (_model == null)
+            if (_status == null)
                 return;
 
             _vStatues._minValue = float.MaxValue;
             _vStatues._maxValue = float.MinValue;
 
-            List<valueList> vList = _model.getValueList();
+            List<valueList> vList = _status.getValueList();
 
             float tmpMin, tmpMax;
             for (int i = 0; i < vList.Count; ++i)
@@ -266,7 +278,7 @@ namespace control_test
 
         private void drawLines()
         {
-            List<valueList> vList = _model.getValueList();
+            List<valueList> vList = _status.getValueList();
 
             for (int i = 0; i < vList.Count; ++i)
             {
@@ -326,7 +338,7 @@ namespace control_test
             // 显示区域右移
             else if (tmpX > _gfxRect.Right)
             {
-                List<valueList> vList = _model.getValueList();
+                List<valueList> vList = _status.getValueList();
                 if (_vStatues._showEndIndex + step <= vList[0].getLength())
                 {
                     _vStatues._showBeginIndex += step;
