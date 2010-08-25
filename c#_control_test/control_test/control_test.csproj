@@ -42,8 +42,9 @@
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
+    <Compile Include="graphicRegionControl.cs" />
     <Compile Include="graphicRegionView.cs" />
-    <Compile Include="graphicRegionModel.cs" />
+    <Compile Include="graphicRegionStatus.cs" />
     <Compile Include="graphicView.cs">
       <SubType>Component</SubType>
     </Compile>
