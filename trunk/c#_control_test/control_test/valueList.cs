@@ -14,7 +14,7 @@ namespace control_test
         {
             const float pi = 3.1415926f;
             
-            values[0] = new float[50];
+            values[0] = new float[500];
             float step = 4 * pi / values[0].Length;
 
             for (int i = 0; i < values[0].Length; ++i)

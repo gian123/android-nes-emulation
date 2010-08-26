@@ -15,10 +15,19 @@ namespace control_test
             public RectangleF _border;
         }
 
+        enum DRAG_MOUSE_STATUS
+        {
+            DOWN,
+            MOVE,
+            UP,
+        }
+        
         Pen _dragPen = new Pen(Color.Red);
 
         Graphics _gfx;
         BufferedGraphics _gfxBuffer;
+        // 画线的buffer
+        BufferedGraphics _gfxLineBuffer;
         
         // 全部区域的rect
         Rectangle _rect = new Rectangle();
@@ -40,16 +49,22 @@ namespace control_test
         {
             // test code
             graphicRegionView region_one = new graphicRegionView("1");
-            region_one.HeightRate = 0.5f;
+            region_one.HeightRate = 0.33f;
             graphicRegionStatus regionModel_one = new graphicRegionStatus();
             region_one.setStatus(regionModel_one);
             _gRegionList.Add(region_one);
 
             graphicRegionView region_two = new graphicRegionView("2");
-            region_two.HeightRate = 0.5f;
+            region_two.HeightRate = 0.33f;
             graphicRegionStatus regionModel_two = new graphicRegionStatus();
             region_two.setStatus(regionModel_two);
             _gRegionList.Add(region_two);
+
+            graphicRegionView region_three = new graphicRegionView("3");
+            region_three.HeightRate = 0.33f;
+            graphicRegionStatus regionModel_three = new graphicRegionStatus();
+            region_three.setStatus(regionModel_three);
+            _gRegionList.Add(region_three);
 
             _regionControl.setRegionViewList(_gRegionList);
         }
@@ -65,7 +80,7 @@ namespace control_test
             for (int i = 0; i < _gRegionList.Count; ++i)
             {
                 _gRegionList[i].CursorPoint = _cursorPoint; // !@!!!!@
-                _gRegionList[i].onPaint(_gfxBuffer.Graphics);
+                _gRegionList[i].onPaint(_gfxBuffer.Graphics, _gfxLineBuffer.Graphics);
             }
             drawDraggingLine(_gfxBuffer.Graphics);
             _gfxBuffer.Render();
@@ -75,6 +90,7 @@ namespace control_test
         {
             _gfx = this.CreateGraphics();
             _gfxBuffer = BufferedGraphicsManager.Current.Allocate(_gfx, this.DisplayRectangle);
+            _gfxLineBuffer = BufferedGraphicsManager.Current.Allocate(_gfx, this.DisplayRectangle);
 
             // refresh the graphic region size
             _rect.Size = this.Size;
@@ -169,11 +185,7 @@ namespace control_test
 
             if (e.Button == MouseButtons.Left)
             {
-                if (isInsideBorder(_cursorPoint, out _dragBorderIndex))
-                {
-                    _isDraggingBorder = true;
-                    _regionControl.setCrossCursor(false);
-                }
+                dragHandle(DRAG_MOUSE_STATUS.DOWN);
             }
         }
 
@@ -181,34 +193,14 @@ namespace control_test
         {
             base.OnMouseMove(e);
             _cursorPoint = e.Location;
-            dragMove();
+            dragHandle(DRAG_MOUSE_STATUS.MOVE);
             paint();
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
         {
             base.OnMouseUp(e);
-            if (_isDraggingBorder)
-            {
-                _isDraggingBorder = false;
-                _regionControl.setCrossCursor(true);
-                dragBorder dBorder = _dBorderList[_dragBorderIndex];
-                dBorder._border.Y = _cursorPoint.Y;
-
-                RectangleF rect = dBorder._upRegion.Rect;
-                SizeF size = dBorder._upRegion.Rect.Size;
-                size.Height = _cursorPoint.Y - dBorder._upRegion.Rect.Top;
-                rect.Size = size;
-                dBorder._upRegion.Rect = rect;
-
-                rect = dBorder._downRegion.Rect;
-                size = dBorder._downRegion.Rect.Size;
-                size.Height = dBorder._downRegion.Rect.Bottom - _cursorPoint.Y;
-                rect.Size = size;
-                dBorder._downRegion.Rect = rect;
-
-                paint();
-            }
+            dragHandle(DRAG_MOUSE_STATUS.UP);
         }
 
         private void drawDraggingLine(Graphics gfx)
@@ -224,20 +216,65 @@ namespace control_test
         /// <summary>
         /// 处理边界拖动事件
         /// </summary>
-        private void dragMove()
+        private void dragHandle(DRAG_MOUSE_STATUS status)
         {
-            if (_isDraggingBorder)
+            if (status == DRAG_MOUSE_STATUS.MOVE)
             {
-                Cursor.Current = Cursors.SizeNS;
-            }
-            else
-            {
-                int index;
-                if (isInsideBorder(_cursorPoint, out index))
+                if (_isDraggingBorder)
                 {
                     Cursor.Current = Cursors.SizeNS;
                 }
+                else
+                {
+                    int index;
+                    if (isInsideBorder(_cursorPoint, out index))
+                    {
+                        Cursor.Current = Cursors.SizeNS;
+                    }
+                }
             }
+            else if (status == DRAG_MOUSE_STATUS.DOWN)
+            {
+                if (isInsideBorder(_cursorPoint, out _dragBorderIndex))
+                {
+                    _isDraggingBorder = true;
+                    _regionControl.setCrossCursor(false);
+                }
+            }
+            else if (status == DRAG_MOUSE_STATUS.UP)
+            {
+                if (_isDraggingBorder)
+                {
+                    _isDraggingBorder = false;
+                    _regionControl.setCrossCursor(true);
+                    dragBorder dBorder = _dBorderList[_dragBorderIndex];
+
+                    // 超出范围
+                    if (_cursorPoint.Y < dBorder._upRegion.Rect.Top ||
+                        _cursorPoint.Y > dBorder._downRegion.Rect.Bottom)
+                        return;
+
+                    dBorder._border.Y = _cursorPoint.Y;
+                    _dBorderList[_dragBorderIndex] = dBorder;
+
+                    RectangleF rect = dBorder._upRegion.Rect;
+                    SizeF size = dBorder._upRegion.Rect.Size;
+                    size.Height = _cursorPoint.Y - dBorder._upRegion.Rect.Top;
+                    rect.Size = size;
+                    dBorder._upRegion.Rect = rect;
+
+                    rect = dBorder._downRegion.Rect;
+                    size = dBorder._downRegion.Rect.Size;
+                    float preHeight = size.Height;
+                    size.Height = dBorder._downRegion.Rect.Bottom - _cursorPoint.Y;
+                    rect.Y = _cursorPoint.Y;
+                    rect.Size = size;
+                    dBorder._downRegion.Rect = rect;
+
+                    paint();
+                }
+            }
+            
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
