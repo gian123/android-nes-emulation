@@ -24,6 +24,8 @@ namespace control_test
         
         Pen _dragPen = new Pen(Color.Red);
 
+        private Color _bkColor = Color.Black;
+
         Graphics _gfx;
         BufferedGraphics _gfxBuffer;
         // »­ÏßµÄbuffer
@@ -76,10 +78,12 @@ namespace control_test
 
         private void paint()
         {
-            _gfxBuffer.Graphics.Clear(Color.Black);
+            _gfxBuffer.Graphics.Clear(_bkColor);
+
+            _gfxLineBuffer.Render(_gfxBuffer.Graphics);
             for (int i = 0; i < _gRegionList.Count; ++i)
             {
-                _gRegionList[i].CursorPoint = _cursorPoint; // !@!!!!@
+                _gRegionList[i].CursorPoint = _cursorPoint;
                 _gRegionList[i].onPaint(_gfxBuffer.Graphics, _gfxLineBuffer.Graphics);
             }
             drawDraggingLine(_gfxBuffer.Graphics);
@@ -181,6 +185,11 @@ namespace control_test
                     _gRegionList[i].addValueList(vlist);
                     _gRegionList[i].setShowRange(0, vlist.getLength());
                 }
+
+                Dictionary<int, INFO_TAG> tagDic = new Dictionary<int, INFO_TAG>();
+                tagDic.Add(30, INFO_TAG.DAY_INFO_MINE);
+                tagDic.Add(60, INFO_TAG.DAY_INFO_MINE);
+                _gRegionList[0].setTagDic(tagDic);
             }
 
             if (e.Button == MouseButtons.Left)
