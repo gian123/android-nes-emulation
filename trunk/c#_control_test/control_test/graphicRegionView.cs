@@ -54,7 +54,16 @@ namespace control_test
         private Font _defaultFont = new Font("system", 10, FontStyle.Regular);
         private SolidBrush _fontBrush = new SolidBrush(Color.Green);
 
+        private Color _bkColor = Color.Black;
+        /// <summary>
+        /// 绘制十字光标，浮动标签等随时在变化的图形
+        /// </summary>
         private Graphics _gfx = null;
+        /// <summary>
+        /// 绘制数据曲线，地雷信息等不轻易变化的图形
+        /// </summary>
+        private Graphics _gfxLine = null;
+
         private Point _cursorPoint = new Point();
         // 该区域占整个绘图区域的百分比
         // _rect.Height = parent's Height * _heightRate;
@@ -74,11 +83,6 @@ namespace control_test
             }
             get { return _heightRate; }
         }
-
-        //public RectangleF ParentRect
-        //{
-        //    set { _parentRect = value; }
-        //}
 
         public RectangleF Rect
         {
@@ -150,6 +154,11 @@ namespace control_test
                 _status.addValueList(list);
         }
 
+        public void setTagDic(Dictionary<int, INFO_TAG> tagDic)
+        {
+            _status.setTagDic(tagDic);
+        }
+
         public void setShowRange(int beginIndex, int endIndex)
         {
             _vStatues._showBeginIndex = beginIndex;
@@ -162,10 +171,10 @@ namespace control_test
             endIndex = _vStatues._showEndIndex;
         }
 
-        public void onPaint(Graphics gfx)
+        public void onPaint(Graphics gfx, Graphics gfxLine)
         {
             _gfx = gfx;
-
+            _gfxLine = gfxLine;
             paintAll();
         }
 
@@ -180,6 +189,7 @@ namespace control_test
             if (_status.IsDrawCrossCursor)
                 drawCrossCursorAndLabel();
             drawTitle();
+            drawTag();
             drawLines();
         }
 
@@ -187,11 +197,11 @@ namespace control_test
         {
             PointF top_p1 = new PointF(_rect.Left, _rect.Top);
             PointF top_p2 = new PointF(_rect.Right, _rect.Top);
-            _gfx.DrawLine(_borderPen, top_p1, top_p2);
+            _gfxLine.DrawLine(_borderPen, top_p1, top_p2);
 
             PointF vertical_p1 = new PointF(_gfxRect.Left, _rect.Top);
             PointF vertical_p2 = new PointF(_gfxRect.Left, _rect.Bottom);
-            _gfx.DrawLine(_borderPen, vertical_p1, vertical_p2);
+            _gfxLine.DrawLine(_borderPen, vertical_p1, vertical_p2);
         }
 
         /// <summary>
@@ -278,6 +288,8 @@ namespace control_test
 
         private void drawLines()
         {
+            //_gfxLine.Clear(_bkColor);
+
             List<valueList> vList = _status.getValueList();
 
             for (int i = 0; i < vList.Count; ++i)
@@ -317,6 +329,21 @@ namespace control_test
             }
         }
 
+        private void drawTag()
+        {
+            Dictionary<int, INFO_TAG> tagDic = _status.getTagDic();
+            if (tagDic == null)
+                return;
+
+            foreach (KeyValuePair<int, INFO_TAG> var in tagDic)
+            {
+                if (var.Key <= _vStatues._showBeginIndex || var.Key >= _vStatues._showEndIndex)
+                    continue;
+
+                float x = var.Key * _vStatues._XRate + _gfxRect.Left;
+                _gfx.DrawString("◇", _defaultFont, _fontBrush, x, _gfxRect.Top);
+            }
+        }
 
         public void moveCursor(int step)
         {
