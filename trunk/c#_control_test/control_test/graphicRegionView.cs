@@ -20,6 +20,8 @@ namespace control_test
         /// 固定显示的范围（如分时线固定显示241条的范围）
         /// </summary>
         public int _fixedDisplayDistance = 0;
+
+        public int _curIndex = 0;
         //public List<valueList> _vList = new List<valueList>();
     }
 
@@ -140,7 +142,7 @@ namespace control_test
         public void setStatus(graphicRegionStatus status)
         {
             _status = status;
-            _status.onValueChanged += new graphicRegionStatus.valueChanged(filterValues);
+            _status.onValueChanged += new graphicRegionStatus.valueChanged(paintAll);
         }
 
         public graphicRegionStatus getStatus()
@@ -171,13 +173,19 @@ namespace control_test
             endIndex = _vStatues._showEndIndex;
         }
 
-        public void onPaint(Graphics gfx, Graphics gfxLine)
+        public void onPaint()
+        {
+            if (_status.IsDrawCrossCursor)
+                drawCrossCursorAndLabel();
+            drawTitle();
+            drawTag();
+        }
+
+        public void setGfx(Graphics gfx, Graphics gfxLine)
         {
             _gfx = gfx;
             _gfxLine = gfxLine;
-            paintAll();
         }
-
 
         public void paintAll()
         {
@@ -186,11 +194,12 @@ namespace control_test
 
             filterValues(); // 需移除出该函数
             drawBorder();
+            drawLines();
+
             if (_status.IsDrawCrossCursor)
                 drawCrossCursorAndLabel();
             drawTitle();
             drawTag();
-            drawLines();
         }
 
         private void drawBorder()
@@ -243,11 +252,11 @@ namespace control_test
         private void drawTitle()
         {
             string title = _titleText + " ";
-            int index = getXIndex(_cursorPoint);
+            _vStatues._curIndex = getXIndex(_cursorPoint);
             List<valueList> vList = _status.getValueList(); 
             for (int i = 0; i < vList.Count; ++i)
             {
-                title += vList[i].getValueStr(index);
+                title += vList[i].getValueStr(_vStatues._curIndex);
             }
             _gfx.DrawString(title, _defaultFont, _fontBrush, _gfxRect.X, _gfxRect.Top - _titleTxtHeight);
         }
@@ -288,9 +297,10 @@ namespace control_test
 
         private void drawLines()
         {
-            //_gfxLine.Clear(_bkColor);
-
             List<valueList> vList = _status.getValueList();
+
+            debuger.trace("beginIndex", _vStatues._showBeginIndex);
+            debuger.trace("endIndex", _vStatues._showEndIndex);
 
             for (int i = 0; i < vList.Count; ++i)
             {
@@ -320,7 +330,7 @@ namespace control_test
                         curPoint.X = x;
                         curPoint.Y = y;
 
-                        _gfx.DrawLine(_borderPen, prePoint, curPoint);
+                        _gfxLine.DrawLine(_borderPen, prePoint, curPoint);
 
                         prePoint = curPoint;
                     }
@@ -345,13 +355,17 @@ namespace control_test
             }
         }
 
-        public void moveCursor(int step)
+        /// <summary>
+        /// 移动十字光标
+        /// </summary>
+        /// <param name="step"></param>
+        /// <returns>是否需要全部重绘</returns>
+        public bool moveCursor(int step)
         {
-            float tmpX = (float)_cursorPoint.X;
-            tmpX += step * _vStatues._XRate;
+            _vStatues._curIndex += step;
 
             // 显示区域左移
-            if (tmpX < _gfxRect.Left)
+            if (_vStatues._curIndex < _vStatues._showBeginIndex)
             {
                 if (_vStatues._showBeginIndex + step >= 0)
                 {
@@ -359,11 +373,11 @@ namespace control_test
                     _vStatues._showEndIndex += step;
                 }
                 else
-                    return;
+                    return true;
             }
 
             // 显示区域右移
-            else if (tmpX > _gfxRect.Right)
+            else if (_vStatues._curIndex > _vStatues._showEndIndex)
             {
                 List<valueList> vList = _status.getValueList();
                 if (_vStatues._showEndIndex + step <= vList[0].getLength())
@@ -372,10 +386,13 @@ namespace control_test
                     _vStatues._showEndIndex += step;
                 }
                 else
-                    return;
+                    return true;
             }
-            else
-                _cursorPoint.X = (int)tmpX;
+
+            //else
+            //    _cursorPoint.X = (int)tmpX;
+
+            return false;
         }
 
         /// <summary>
@@ -393,7 +410,7 @@ namespace control_test
 
         public int getXIndex(int x)
         {
-            int index = (int)((x - _gfxRect.Left) / _vStatues._XRate);
+            int index = (int)((x - _gfxRect.Left) / _vStatues._XRate) + _vStatues._showBeginIndex;
             if (index < 0)
                 return 0;
             return index;

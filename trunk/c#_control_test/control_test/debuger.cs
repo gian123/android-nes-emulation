@@ -6,9 +6,14 @@ namespace control_test
 {
     class debuger
     {
-        static public void trace(string msg)
+        static public void trace(params object[] msg)
         {
-            System.Diagnostics.Debug.Write(msg + "\n");
+            for (int i = 0; i < msg.Length; ++i)
+            {
+                System.Diagnostics.Debug.Write(msg[i].ToString() + " ");
+            }
+
+            System.Diagnostics.Debug.Write("\n");
         }
         
         static public void assert(bool condition)

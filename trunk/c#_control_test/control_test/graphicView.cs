@@ -79,13 +79,28 @@ namespace control_test
         private void paint()
         {
             _gfxBuffer.Graphics.Clear(_bkColor);
-
             _gfxLineBuffer.Render(_gfxBuffer.Graphics);
             for (int i = 0; i < _gRegionList.Count; ++i)
             {
                 _gRegionList[i].CursorPoint = _cursorPoint;
-                _gRegionList[i].onPaint(_gfxBuffer.Graphics, _gfxLineBuffer.Graphics);
+                _gRegionList[i].onPaint();
             }
+            drawDraggingLine(_gfxBuffer.Graphics);
+            _gfxBuffer.Render();
+        }
+
+        private void paintAll()
+        {
+            _gfxBuffer.Graphics.Clear(_bkColor);
+            _gfxLineBuffer.Graphics.Clear(_bkColor);
+            
+            for (int i = 0; i < _gRegionList.Count; ++i)
+            {
+                _gRegionList[i].CursorPoint = _cursorPoint;
+                _gRegionList[i].paintAll();
+            }
+
+            _gfxLineBuffer.Render(_gfxBuffer.Graphics);
             drawDraggingLine(_gfxBuffer.Graphics);
             _gfxBuffer.Render();
         }
@@ -96,14 +111,16 @@ namespace control_test
             _gfxBuffer = BufferedGraphicsManager.Current.Allocate(_gfx, this.DisplayRectangle);
             _gfxLineBuffer = BufferedGraphicsManager.Current.Allocate(_gfx, this.DisplayRectangle);
 
+            for (int i = 0; i < _gRegionList.Count; ++i)
+                _gRegionList[i].setGfx(_gfxBuffer.Graphics, _gfxLineBuffer.Graphics);
+
             // refresh the graphic region size
             _rect.Size = this.Size;
             _rect.Location = this.Location;
             _gfx.SetClip(_rect);
 
             resetRegionRect();
-
-            this.Invalidate();
+            paintAll();
         }
 
         /// <summary>
@@ -178,12 +195,12 @@ namespace control_test
             if (e.Button == MouseButtons.Right)
             {
                 valueList vlist = new valueList();
-                vlist.initSin();
+                vlist.initRandom();
                 for (int i = 0; i < _gRegionList.Count; ++i)
                 {
                     _gRegionList[i].TitleText = "Sin";
+                    _gRegionList[i].setShowRange(0, vlist.getLength() - 50);
                     _gRegionList[i].addValueList(vlist);
-                    _gRegionList[i].setShowRange(0, vlist.getLength());
                 }
 
                 Dictionary<int, INFO_TAG> tagDic = new Dictionary<int, INFO_TAG>();
@@ -280,7 +297,7 @@ namespace control_test
                     rect.Size = size;
                     dBorder._downRegion.Rect = rect;
 
-                    paint();
+                    paintAll();
                 }
             }
             
@@ -291,23 +308,25 @@ namespace control_test
             switch (keyData)
             {
                 case Keys.Left:
-                    {
-                        for (int i = 0; i < _gRegionList.Count; ++i)
-                        {
-                            _gRegionList[i].moveCursor(-1);
-                        }
-                        _cursorPoint = _gRegionList[0].CursorPoint;
-                        paint();
-                    }
-                    break;
                 case Keys.Right:
                     {
+                        int step = 0;
+                        if (keyData == Keys.Left)
+                            step = -1;
+                        else
+                            step = 2;
+
+                        bool needPaintAll = false;
                         for (int i = 0; i < _gRegionList.Count; ++i)
                         {
-                            _gRegionList[i].moveCursor(1);
+                            needPaintAll = _gRegionList[i].moveCursor(step);
                         }
                         _cursorPoint = _gRegionList[0].CursorPoint;
-                        paint();
+
+                        //if (needPaintAll)
+                            paintAll();
+                        //else
+                        //    paint();
                     }
                     break;
                 case Keys.Up:

@@ -23,6 +23,18 @@ namespace control_test
             }
         }
 
+        public void initRandom()
+        {
+            values[0] = new float[100];
+            Random rd = new Random();
+
+            for (int i = 0; i < values[0].Length; ++i)
+            {
+                values[0][i] = rd.Next(500);
+            }
+        }
+
+
         public void findMinMax(int beginIndex, int endIndex, out float min, out float max)
         {
             min = float.MaxValue;
@@ -53,8 +65,15 @@ namespace control_test
             String str = "";
             for (int i = 0; i < values.Length && values[i] != null; ++i)
             {
-                debuger.assert(index >= 0 && index < values[i].Length);
-                str += values[i][index].ToString("0.00");
+                if (index < 0)
+                    index = 0;
+                if (index >= values[i].Length)
+                    index = values[i].Length - 1;
+
+                //debuger.assert(index >= 0 && index < values[i].Length);
+
+                str += index.ToString();
+                //str += values[i][index].ToString("0.00");
                 str += " ";
             }
             return str;
