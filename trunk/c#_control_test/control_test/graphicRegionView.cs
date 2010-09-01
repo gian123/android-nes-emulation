@@ -114,7 +114,12 @@ namespace control_test
 
         public Point CursorPoint
         {
-            set { _cursorPoint = value; }
+            set 
+            {
+                //debuger.trace("set CurosrPoint");
+                _cursorPoint = value;
+                _vStatues._curIndex = getXIndex(_cursorPoint);
+            }
             get { return _cursorPoint; }
         }
 
@@ -252,7 +257,7 @@ namespace control_test
         private void drawTitle()
         {
             string title = _titleText + " ";
-            _vStatues._curIndex = getXIndex(_cursorPoint);
+
             List<valueList> vList = _status.getValueList(); 
             for (int i = 0; i < vList.Count; ++i)
             {
@@ -299,8 +304,8 @@ namespace control_test
         {
             List<valueList> vList = _status.getValueList();
 
-            debuger.trace("beginIndex", _vStatues._showBeginIndex);
-            debuger.trace("endIndex", _vStatues._showEndIndex);
+            //debuger.trace("beginIndex", _vStatues._showBeginIndex);
+            //debuger.trace("endIndex", _vStatues._showEndIndex);
 
             for (int i = 0; i < vList.Count; ++i)
             {
@@ -317,7 +322,7 @@ namespace control_test
                     float[] valueArray = lineValues.values[j];
                     for (int m = _vStatues._showBeginIndex, n = 0; m < _vStatues._showEndIndex; ++m, ++n)
                     {
-                        float x = n * _vStatues._XRate + _gfxRect.Left;
+                        float x = getXPos(n);
                         float y = _gfxRect.Bottom - (valueArray[m] - _vStatues._minValue) * _vStatues._YRate;
 
                         if (n == 0)
@@ -362,37 +367,18 @@ namespace control_test
         /// <returns>是否需要全部重绘</returns>
         public bool moveCursor(int step)
         {
-            _vStatues._curIndex += step;
+            //_vStatues._curIndex += step;
+            int tmpIndex = _vStatues._curIndex;
+            tmpIndex += step;
 
-            // 显示区域左移
-            if (_vStatues._curIndex < _vStatues._showBeginIndex)
+            if (tmpIndex > _vStatues._showBeginIndex && tmpIndex < _vStatues._showEndIndex)
             {
-                if (_vStatues._showBeginIndex + step >= 0)
-                {
-                    _vStatues._showBeginIndex += step;
-                    _vStatues._showEndIndex += step;
-                }
-                else
-                    return true;
+                _vStatues._curIndex = tmpIndex;
+                _cursorPoint.X = (int)getXPos(_vStatues._curIndex - _vStatues._showBeginIndex);
             }
-
-            // 显示区域右移
-            else if (_vStatues._curIndex > _vStatues._showEndIndex)
-            {
-                List<valueList> vList = _status.getValueList();
-                if (_vStatues._showEndIndex + step <= vList[0].getLength())
-                {
-                    _vStatues._showBeginIndex += step;
-                    _vStatues._showEndIndex += step;
-                }
-                else
-                    return true;
-            }
-
-            //else
-            //    _cursorPoint.X = (int)tmpX;
 
             return false;
+           
         }
 
         /// <summary>
@@ -408,14 +394,24 @@ namespace control_test
             return getXIndex(point.X);
         }
 
-        public int getXIndex(int x)
+        public int getXIndex(int xPos)
         {
-            int index = (int)((x - _gfxRect.Left) / _vStatues._XRate) + _vStatues._showBeginIndex;
+            int index = (int)((xPos - _gfxRect.Left - _vStatues._XRate / 2) / _vStatues._XRate) + 
+                               _vStatues._showBeginIndex;
             if (index < 0)
                 return 0;
             return index;
         }
 
+        /// <summary>
+        /// 根据x索引返回x坐标位置
+        /// </summary>
+        private float getXPos(int xIndex)
+        {
+            xIndex -= _vStatues._showBeginIndex;
+            float pos = xIndex * _vStatues._XRate + _gfxRect.Left + _vStatues._XRate / 2;
+            return pos;
+        }
 
     }
 }
