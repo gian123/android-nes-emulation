@@ -78,6 +78,8 @@ namespace control_test
 
         private void paint()
         {
+            debuger.trace("paint cursor x", _cursorPoint.X);
+
             _gfxBuffer.Graphics.Clear(_bkColor);
             _gfxLineBuffer.Render(_gfxBuffer.Graphics);
             for (int i = 0; i < _gRegionList.Count; ++i)
@@ -91,6 +93,8 @@ namespace control_test
 
         private void paintAll()
         {
+            debuger.trace("paintAll cursor x", _cursorPoint.X);
+
             _gfxBuffer.Graphics.Clear(_bkColor);
             _gfxLineBuffer.Graphics.Clear(_bkColor);
             
@@ -215,12 +219,25 @@ namespace control_test
             }
         }
 
+        /// <summary>
+        /// 防止OnMouseMove一直被触发
+        /// </summary>
+        private Point _lastPoint = new Point();
+
         protected override void OnMouseMove(MouseEventArgs e)
         {
-            base.OnMouseMove(e);
+            if (_lastPoint == e.Location)
+                return;
+
+            _lastPoint = e.Location;
             _cursorPoint = e.Location;
+
+            debuger.trace("OnMouseMove cursor x", _cursorPoint.X);
+
             dragHandle(DRAG_MOUSE_STATUS.MOVE);
             paint();
+
+            base.OnMouseMove(e);
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
@@ -314,7 +331,7 @@ namespace control_test
                         if (keyData == Keys.Left)
                             step = -1;
                         else
-                            step = 2;
+                            step = 1;
 
                         bool needPaintAll = false;
                         for (int i = 0; i < _gRegionList.Count; ++i)
@@ -323,10 +340,12 @@ namespace control_test
                         }
                         _cursorPoint = _gRegionList[0].CursorPoint;
 
-                        //if (needPaintAll)
+                        debuger.trace("ProcessCmdKey cursor x", _cursorPoint.X);
+
+                        if (needPaintAll)
                             paintAll();
-                        //else
-                        //    paint();
+                        else
+                            paint();
                     }
                     break;
                 case Keys.Up:
