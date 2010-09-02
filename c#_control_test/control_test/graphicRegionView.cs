@@ -116,7 +116,6 @@ namespace control_test
         {
             set 
             {
-                //debuger.trace("set CurosrPoint");
                 _cursorPoint = value;
                 _vStatues._curIndex = getXIndex(_cursorPoint);
             }
@@ -142,7 +141,6 @@ namespace control_test
         {
             return _regionName;
         }
-
 
         public void setStatus(graphicRegionStatus status)
         {
@@ -200,11 +198,6 @@ namespace control_test
             filterValues(); // 需移除出该函数
             drawBorder();
             drawLines();
-
-            if (_status.IsDrawCrossCursor)
-                drawCrossCursorAndLabel();
-            drawTitle();
-            drawTag();
         }
 
         private void drawBorder()
@@ -257,6 +250,8 @@ namespace control_test
         private void drawTitle()
         {
             string title = _titleText + " ";
+
+            //_vStatues._curIndex = getXIndex(_cursorPoint);
 
             List<valueList> vList = _status.getValueList(); 
             for (int i = 0; i < vList.Count; ++i)
@@ -320,12 +315,12 @@ namespace control_test
                                    _vStatues._showEndIndex > _vStatues._showBeginIndex);
 
                     float[] valueArray = lineValues.values[j];
-                    for (int m = _vStatues._showBeginIndex, n = 0; m < _vStatues._showEndIndex; ++m, ++n)
+                    for (int m = _vStatues._showBeginIndex; m < _vStatues._showEndIndex; ++m)
                     {
-                        float x = getXPos(n);
+                        float x = getXPos(m);
                         float y = _gfxRect.Bottom - (valueArray[m] - _vStatues._minValue) * _vStatues._YRate;
 
-                        if (n == 0)
+                        if (m == _vStatues._showBeginIndex)
                         {
                             prePoint.X = x;
                             prePoint.Y = y;
@@ -355,7 +350,7 @@ namespace control_test
                 if (var.Key <= _vStatues._showBeginIndex || var.Key >= _vStatues._showEndIndex)
                     continue;
 
-                float x = var.Key * _vStatues._XRate + _gfxRect.Left;
+                float x = getXPos(var.Key);
                 _gfx.DrawString("◇", _defaultFont, _fontBrush, x, _gfxRect.Top);
             }
         }
@@ -363,23 +358,70 @@ namespace control_test
         /// <summary>
         /// 移动十字光标
         /// </summary>
-        /// <param name="step"></param>
         /// <returns>是否需要全部重绘</returns>
         public bool moveCursor(int step)
         {
-            //_vStatues._curIndex += step;
+            if (!checkRange())
+                return false;
+
             int tmpIndex = _vStatues._curIndex;
             tmpIndex += step;
 
-            if (tmpIndex > _vStatues._showBeginIndex && tmpIndex < _vStatues._showEndIndex)
+            List<valueList> vList = _status.getValueList();
+
+            if (tmpIndex >= _vStatues._showBeginIndex && tmpIndex < _vStatues._showEndIndex)
             {
                 _vStatues._curIndex = tmpIndex;
-                _cursorPoint.X = (int)getXPos(_vStatues._curIndex - _vStatues._showBeginIndex);
+                _cursorPoint.X = (int)getXPos(_vStatues._curIndex);
+                return false;
+            }
+            else if (tmpIndex >= 0 && tmpIndex < vList[0].getLength())
+            {
+                _vStatues._showBeginIndex += step;
+                _vStatues._showEndIndex += step;
+                _vStatues._curIndex = tmpIndex;
+                return true;
             }
 
             return false;
-           
         }
+
+        /// <summary>
+        /// 范围缩放
+        /// </summary>
+        /// <param name="up">是否为放大,否则为缩小</param>
+        /// <returns>是否需要全部重绘</returns>
+        public bool scaleRange(bool up)
+        {
+            if (!checkRange())
+                return false;
+
+            int step = (_vStatues._showEndIndex - _vStatues._showBeginIndex) * 3 / 10; // 30%比例缩放
+            step = (step != 0) ? step : 1;
+            
+            if (up)
+            {
+                int tmpBeginIndex = _vStatues._showBeginIndex + step;
+                if (_vStatues._showEndIndex - tmpBeginIndex >= 10)
+                {
+                    _vStatues._showBeginIndex = tmpBeginIndex;
+                    return true;
+                }
+            }
+            else
+            {
+                List<valueList> vList = _status.getValueList();
+                int length = vList[0].getLength();
+
+                if (_vStatues._showBeginIndex == 0 && _vStatues._showEndIndex < length)
+                {
+
+                }
+            }
+
+            return false;
+        }
+
 
         /// <summary>
         /// 一点是否处于该区域内
@@ -396,7 +438,7 @@ namespace control_test
 
         public int getXIndex(int xPos)
         {
-            int index = (int)((xPos - _gfxRect.Left - _vStatues._XRate / 2) / _vStatues._XRate) + 
+            int index = (int)((xPos - _gfxRect.Left) / _vStatues._XRate) + 
                                _vStatues._showBeginIndex;
             if (index < 0)
                 return 0;
@@ -413,5 +455,10 @@ namespace control_test
             return pos;
         }
 
+        private bool checkRange()
+        {
+            List<valueList> vList = _status.getValueList();
+            return vList.Count > 0;
+        }
     }
 }
