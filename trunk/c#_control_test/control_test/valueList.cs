@@ -72,12 +72,11 @@ namespace control_test
 
                 //debuger.assert(index >= 0 && index < values[i].Length);
 
-                str += index.ToString();
-                //str += values[i][index].ToString("0.00");
+                str += values[i][index].ToString("0.00");
                 str += " ";
             }
             return str;
         }
-    }
+    } 
 
 }

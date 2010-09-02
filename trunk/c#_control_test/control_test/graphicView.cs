@@ -78,8 +78,6 @@ namespace control_test
 
         private void paint()
         {
-            debuger.trace("paint cursor x", _cursorPoint.X);
-
             _gfxBuffer.Graphics.Clear(_bkColor);
             _gfxLineBuffer.Render(_gfxBuffer.Graphics);
             for (int i = 0; i < _gRegionList.Count; ++i)
@@ -93,8 +91,7 @@ namespace control_test
 
         private void paintAll()
         {
-            debuger.trace("paintAll cursor x", _cursorPoint.X);
-
+            // 画线
             _gfxBuffer.Graphics.Clear(_bkColor);
             _gfxLineBuffer.Graphics.Clear(_bkColor);
             
@@ -103,10 +100,8 @@ namespace control_test
                 _gRegionList[i].CursorPoint = _cursorPoint;
                 _gRegionList[i].paintAll();
             }
-
-            _gfxLineBuffer.Render(_gfxBuffer.Graphics);
-            drawDraggingLine(_gfxBuffer.Graphics);
-            _gfxBuffer.Render();
+            // 绘制十字光标，标题等
+            paint();
         }
 
         protected override void OnResize(EventArgs e)
@@ -199,7 +194,7 @@ namespace control_test
             if (e.Button == MouseButtons.Right)
             {
                 valueList vlist = new valueList();
-                vlist.initRandom();
+                vlist.initSin();
                 for (int i = 0; i < _gRegionList.Count; ++i)
                 {
                     _gRegionList[i].TitleText = "Sin";
@@ -232,7 +227,7 @@ namespace control_test
             _lastPoint = e.Location;
             _cursorPoint = e.Location;
 
-            debuger.trace("OnMouseMove cursor x", _cursorPoint.X);
+            //debuger.trace("OnMouseMove cursor x", _cursorPoint.X);
 
             dragHandle(DRAG_MOUSE_STATUS.MOVE);
             paint();
@@ -340,8 +335,6 @@ namespace control_test
                         }
                         _cursorPoint = _gRegionList[0].CursorPoint;
 
-                        debuger.trace("ProcessCmdKey cursor x", _cursorPoint.X);
-
                         if (needPaintAll)
                             paintAll();
                         else
@@ -349,8 +342,10 @@ namespace control_test
                     }
                     break;
                 case Keys.Up:
-                    break;
                 case Keys.Down:
+                    {
+
+                    }
                     break;
             }
             return base.ProcessCmdKey(ref msg, keyData);
