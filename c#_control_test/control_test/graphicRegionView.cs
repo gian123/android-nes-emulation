@@ -408,14 +408,24 @@ namespace control_test
                     return true;
                 }
             }
-            else
+            else // down
             {
                 List<valueList> vList = _status.getValueList();
                 int length = vList[0].getLength();
 
+                // 向后缩小
                 if (_vStatues._showBeginIndex == 0 && _vStatues._showEndIndex < length)
                 {
-
+                    int tmpEndIndex = _vStatues._showEndIndex + step;
+                    _vStatues._showEndIndex = (tmpEndIndex > length) ? length : tmpEndIndex;
+                    return true;
+                }
+                // 向左缩小
+                else if (_vStatues._showBeginIndex > 0)
+                {
+                    int tmpBeginIndex = _vStatues._showBeginIndex - step;
+                    _vStatues._showBeginIndex = (tmpBeginIndex < 0) ? 0 : tmpBeginIndex;
+                    return true;
                 }
             }
 
