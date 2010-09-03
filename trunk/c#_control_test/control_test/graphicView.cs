@@ -344,7 +344,20 @@ namespace control_test
                 case Keys.Up:
                 case Keys.Down:
                     {
+                        bool isUp = false;
+                        if (keyData == Keys.Up)
+                            isUp = true;
 
+                        bool needPaintAll = false;
+                        for (int i = 0; i < _gRegionList.Count; ++i)
+                        {
+                            needPaintAll = _gRegionList[i].scaleRange(isUp);
+                        }
+
+                        if (needPaintAll)
+                            paintAll();
+                        else
+                            paint();
                     }
                     break;
             }
