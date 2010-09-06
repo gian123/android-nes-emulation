@@ -251,8 +251,6 @@ namespace control_test
         {
             string title = _titleText + " ";
 
-            //_vStatues._curIndex = getXIndex(_cursorPoint);
-
             List<valueList> vList = _status.getValueList(); 
             for (int i = 0; i < vList.Count; ++i)
             {
@@ -299,9 +297,6 @@ namespace control_test
         {
             List<valueList> vList = _status.getValueList();
 
-            //debuger.trace("beginIndex", _vStatues._showBeginIndex);
-            //debuger.trace("endIndex", _vStatues._showEndIndex);
-
             for (int i = 0; i < vList.Count; ++i)
             {
                 valueList lineValues = vList[i];
@@ -318,7 +313,7 @@ namespace control_test
                     for (int m = _vStatues._showBeginIndex; m < _vStatues._showEndIndex; ++m)
                     {
                         float x = getXPos(m);
-                        float y = _gfxRect.Bottom - (valueArray[m] - _vStatues._minValue) * _vStatues._YRate;
+                        float y = getYPos(valueArray[m]); //_gfxRect.Bottom - (valueArray[m] - _vStatues._minValue) * _vStatues._YRate;
 
                         if (m == _vStatues._showBeginIndex)
                         {
@@ -465,10 +460,52 @@ namespace control_test
             return pos;
         }
 
+        private float getYPos(float value)
+        {
+            float y = _gfxRect.Bottom - (value - _vStatues._minValue) * _vStatues._YRate;
+            return y;
+        }
+
         private bool checkRange()
         {
             List<valueList> vList = _status.getValueList();
             return vList.Count > 0;
         }
+
+        /// <summary>
+        /// 点是否在线条上
+        /// </summary>
+        public bool isPointAtLines(Point point)
+        {
+            if (!isPointInside(point))
+                return false;
+            if (!checkRange())
+                return false;
+
+            List<valueList> vList = _status.getValueList();
+            for (int i = 0; i < vList.Count; ++i)
+            {
+                float[][] values = vList[i].values;
+                for (int j = 0; j < values.Length && values[j] != null; ++j)
+                {
+                    float value = values[j][_vStatues._curIndex];
+                    float yPos = getYPos(value);
+                    float yTop = yPos - 2;
+                    float yBottom = yPos + 2;
+                    if (point.Y > yTop && point.Y < yBottom)
+                        return true;
+                    else
+                    {
+                        debuger.trace("top", yTop.ToString("0.00"));
+                        debuger.trace("pos", (point.Y).ToString("0.00"));
+                        debuger.trace("bottom", yBottom.ToString("0.00"));
+                    }
+                }
+            }
+
+            return false;
+        }
+
+
     }
 }
