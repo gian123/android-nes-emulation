@@ -231,6 +231,7 @@ namespace control_test
 
             dragHandle(DRAG_MOUSE_STATUS.MOVE);
             paint();
+            ResetMouseEventArgs();
 
             base.OnMouseMove(e);
         }
@@ -327,8 +328,8 @@ namespace control_test
                     break;
                 }
             }
-            if (hit)
-                MessageBox.Show("Hits");
+            //if (hit)
+            //    MessageBox.Show("Hits");
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)

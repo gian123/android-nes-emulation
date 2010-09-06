@@ -482,6 +482,8 @@ namespace control_test
             if (!checkRange())
                 return false;
 
+            debuger.trace("isPointAtLines");
+
             List<valueList> vList = _status.getValueList();
             for (int i = 0; i < vList.Count; ++i)
             {
@@ -494,12 +496,12 @@ namespace control_test
                     float yBottom = yPos + 2;
                     if (point.Y > yTop && point.Y < yBottom)
                         return true;
-                    else
-                    {
-                        debuger.trace("top", yTop.ToString("0.00"));
-                        debuger.trace("pos", (point.Y).ToString("0.00"));
-                        debuger.trace("bottom", yBottom.ToString("0.00"));
-                    }
+                    //else
+                    //{
+                    //    debuger.trace("top", yTop.ToString("0.00"));
+                    //    debuger.trace("pos", (point.Y).ToString("0.00"));
+                    //    debuger.trace("bottom", yBottom.ToString("0.00"));
+                    //}
                 }
             }
 
