@@ -312,7 +312,23 @@ namespace control_test
                     paintAll();
                 }
             }
-            
+        }
+
+        protected override void OnMouseHover(EventArgs e)
+        {
+            Point point = Cursor.Position;
+            point = this.PointToClient(point);
+            bool hit = false;
+            for (int i = 0; i < _gRegionList.Count; ++i)
+            {
+                if (_gRegionList[i].isPointAtLines(point))
+                {
+                    hit = true;
+                    break;
+                }
+            }
+            if (hit)
+                MessageBox.Show("Hits");
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
