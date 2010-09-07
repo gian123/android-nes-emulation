@@ -5,26 +5,6 @@ using System.Drawing;
 
 namespace control_test
 {
-    class regionValueStatus
-    {
-        public float _minValue = 0.0f;
-        public float _maxValue = 0.0f;
-        // 数据绘制的Y值 = _gfxRect.Bottom - value * _YRate
-        public float _YRate;
-        // 数据绘制的X值 = index * _XRate + _gfxRect.Left
-        public float _XRate;
-
-        public int _showBeginIndex = 0;
-        public int _showEndIndex = 0;
-        /// <summary>
-        /// 固定显示的范围（如分时线固定显示241条的范围）
-        /// </summary>
-        public int _fixedDisplayDistance = 0;
-
-        public int _curIndex = 0;
-        //public List<valueList> _vList = new List<valueList>();
-    }
-
 
     class graphicRegionView
     {
@@ -52,6 +32,8 @@ namespace control_test
         private int _titleTxtHeight = 10;
 
         private Pen _borderPen = new Pen(Color.White);
+        private Pen _borderPen2 = new Pen(Color.White);
+
         private Pen _cursorPen = new Pen(Color.Blue);
         private Font _defaultFont = new Font("system", 10, FontStyle.Regular);
         private SolidBrush _fontBrush = new SolidBrush(Color.Green);
@@ -209,6 +191,11 @@ namespace control_test
             PointF vertical_p1 = new PointF(_gfxRect.Left, _rect.Top);
             PointF vertical_p2 = new PointF(_gfxRect.Left, _rect.Bottom);
             _gfxLine.DrawLine(_borderPen, vertical_p1, vertical_p2);
+
+            float halfHeight = _rect.Height / 2;
+            PointF middle_p1 = new PointF(_gfxRect.Left, _gfxRect.Bottom - halfHeight);
+            PointF middle_p2 = new PointF(_gfxRect.Right, _gfxRect.Bottom - halfHeight);
+            _gfxLine.DrawLine(_borderPen, middle_p1, middle_p2);
         }
 
         /// <summary>
@@ -482,8 +469,6 @@ namespace control_test
             if (!checkRange())
                 return false;
 
-            debuger.trace("isPointAtLines");
-
             List<valueList> vList = _status.getValueList();
             for (int i = 0; i < vList.Count; ++i)
             {
@@ -496,12 +481,6 @@ namespace control_test
                     float yBottom = yPos + 2;
                     if (point.Y > yTop && point.Y < yBottom)
                         return true;
-                    //else
-                    //{
-                    //    debuger.trace("top", yTop.ToString("0.00"));
-                    //    debuger.trace("pos", (point.Y).ToString("0.00"));
-                    //    debuger.trace("bottom", yBottom.ToString("0.00"));
-                    //}
                 }
             }
 
