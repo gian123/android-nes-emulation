@@ -9,8 +9,27 @@ namespace control_test
         DAY_INFO_MINE,
         DAY_WEIGHT,
         MIN_INFO_MINE,
-
     }
+
+    class regionValueStatus
+    {
+        public float _minValue = 0.0f;
+        public float _maxValue = 0.0f;
+        // 数据绘制的Y值 = _gfxRect.Bottom - value * _YRate
+        public float _YRate;
+        // 数据绘制的X值 = index * _XRate + _gfxRect.Left
+        public float _XRate;
+
+        public int _showBeginIndex = 0;
+        public int _showEndIndex = 0;
+        /// <summary>
+        /// 固定显示的范围（如分时线固定显示241条的范围）
+        /// </summary>
+        public int _fixedDisplayDistance = 0;
+
+        public int _curIndex = 0;
+    }
+
 
     class graphicRegionStatus
     {
@@ -34,6 +53,8 @@ namespace control_test
         private List<valueList> _vList = new List<valueList>();
 
         private Dictionary<int, INFO_TAG> _tagDic = null;
+
+        private regionValueStatus _vStatus = new regionValueStatus();
 
         public delegate void valueChanged();
         public event valueChanged onValueChanged;
