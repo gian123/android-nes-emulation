@@ -110,8 +110,7 @@ namespace control_test
             _gfxBuffer = BufferedGraphicsManager.Current.Allocate(_gfx, this.DisplayRectangle);
             _gfxLineBuffer = BufferedGraphicsManager.Current.Allocate(_gfx, this.DisplayRectangle);
 
-            for (int i = 0; i < _gRegionList.Count; ++i)
-                _gRegionList[i].setGfx(_gfxBuffer.Graphics, _gfxLineBuffer.Graphics);
+            _regionControl.setGfx(_gfxBuffer.Graphics, _gfxLineBuffer.Graphics);
 
             // refresh the graphic region size
             _rect.Size = this.Size;
@@ -198,7 +197,7 @@ namespace control_test
                 for (int i = 0; i < _gRegionList.Count; ++i)
                 {
                     _gRegionList[i].TitleText = "Sin";
-                    _gRegionList[i].setShowRange(0, vlist.getLength() - 50);
+                    _regionControl.setShowRange(i, 0, vlist.getLength() - 50);
                     _gRegionList[i].addValueList(vlist);
                 }
 
@@ -328,8 +327,6 @@ namespace control_test
                     break;
                 }
             }
-            //if (hit)
-            //    MessageBox.Show("Hits");
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -345,13 +342,8 @@ namespace control_test
                         else
                             step = 1;
 
-                        bool needPaintAll = false;
-                        for (int i = 0; i < _gRegionList.Count; ++i)
-                        {
-                            needPaintAll = _gRegionList[i].moveCursor(step);
-                        }
+                        bool needPaintAll = _regionControl.moveCursor(step);
                         _cursorPoint = _gRegionList[0].CursorPoint;
-
                         if (needPaintAll)
                             paintAll();
                         else
@@ -365,12 +357,7 @@ namespace control_test
                         if (keyData == Keys.Up)
                             isUp = true;
 
-                        bool needPaintAll = false;
-                        for (int i = 0; i < _gRegionList.Count; ++i)
-                        {
-                            needPaintAll = _gRegionList[i].scaleRange(isUp);
-                        }
-
+                        bool needPaintAll = _regionControl.scaleRange(isUp);
                         if (needPaintAll)
                             paintAll();
                         else

@@ -53,7 +53,7 @@ namespace control_test
         // _rect.Height = parent's Height * _heightRate;
         private float _heightRate = 1.0f;
 
-        private regionValueStatus _vStatues = new regionValueStatus();
+        private regionValueStatus _vStatues = null;
 
         private graphicRegionStatus _status = null;
 
@@ -127,6 +127,8 @@ namespace control_test
         public void setStatus(graphicRegionStatus status)
         {
             _status = status;
+            _vStatues = status.ValueStatus;
+
             _status.onValueChanged += new graphicRegionStatus.valueChanged(paintAll);
         }
 
@@ -146,17 +148,6 @@ namespace control_test
             _status.setTagDic(tagDic);
         }
 
-        public void setShowRange(int beginIndex, int endIndex)
-        {
-            _vStatues._showBeginIndex = beginIndex;
-            _vStatues._showEndIndex = endIndex;
-        }
-
-        public void getShowRange(out int beginIndex, out int endIndex)
-        {
-            beginIndex = _vStatues._showBeginIndex;
-            endIndex = _vStatues._showEndIndex;
-        }
 
         public void onPaint()
         {
