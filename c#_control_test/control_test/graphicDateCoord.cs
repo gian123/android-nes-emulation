@@ -33,16 +33,33 @@ namespace control_test
 
         private Pen _borderPen = new Pen(Color.White);
 
+        private int _beginIndex = 0;
+        private int _endIndex = 0;
+
         public RectangleF Rect
         {
             set { _rect = value; }
             get { return _rect; }
         }
 
+        private List<xCoordDateInfo> _dateInfoList = new List<xCoordDateInfo>();
+
+        public void setDateInfo(List<xCoordDateInfo> infoList)
+        {
+            _dateInfoList = infoList;
+        }
+
         public void onPaint(Graphics gfxStatic, Graphics gfxDynamic)
         {
             _gfxStatic = gfxStatic;
             _gfxDynamic = gfxDynamic;
+            drawBorder();
+        }
+
+        public void setDrawRange(int beginIndex, int endIndex)
+        {
+            _beginIndex = beginIndex;
+            _endIndex = endIndex;
         }
 
         public void drawBorder()
@@ -66,7 +83,13 @@ namespace control_test
 
         public void drawDate()
         {
-            
+            //for (int i = _beginIndex; i < _endIndex && i < _dateInfoList.Count; ++i)
+            //{
+            //    xCoordDateInfo info = _dateInfoList[i];
+            //    info.index
+            //}
         }
+
+
     }
 }

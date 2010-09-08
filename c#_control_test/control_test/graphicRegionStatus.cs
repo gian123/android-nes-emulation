@@ -65,6 +65,12 @@ namespace control_test
             set { _isDrawCrossCursor = value; }
         }
 
+        public regionValueStatus ValueStatus
+        {
+            get { return _vStatus; }
+            set { _vStatus = value; }
+        }
+
         public List<valueList> getValueList()
         {
             return _vList;
@@ -87,6 +93,17 @@ namespace control_test
             return _tagDic;
         }
 
+        public void setShowRange(int beginIndex, int endIndex)
+        {
+            _vStatus._showBeginIndex = beginIndex;
+            _vStatus._showEndIndex = endIndex;
+        }
+
+        public void getShowRange(out int beginIndex, out int endIndex)
+        {
+            beginIndex = _vStatus._showBeginIndex;
+            endIndex = _vStatus._showEndIndex;
+        }
 
 
     }
