@@ -49,10 +49,19 @@ namespace control_test
             _dateInfoList = infoList;
         }
 
-        public void onPaint(Graphics gfxStatic, Graphics gfxDynamic)
+        public void setGfx(Graphics gfxDynamic, Graphics gfxStatic)
         {
             _gfxStatic = gfxStatic;
             _gfxDynamic = gfxDynamic;
+        }
+
+        public void onPaint()
+        {
+            
+        }
+
+        public void paintAll()
+        {
             drawBorder();
         }
 
