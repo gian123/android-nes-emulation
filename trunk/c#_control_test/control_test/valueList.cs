@@ -19,7 +19,7 @@ namespace control_test
 
             for (int i = 0; i < values[0].Length; ++i)
             {
-                values[0][i] = (float)Math.Sin(i * step);
+                values[0][i] = (float)Math.Sin(i * step) * 10;
             }
         }
 
@@ -30,7 +30,7 @@ namespace control_test
 
             for (int i = 0; i < values[0].Length; ++i)
             {
-                values[0][i] = rd.Next(500);
+                values[0][i] = rd.Next(50);
             }
         }
 

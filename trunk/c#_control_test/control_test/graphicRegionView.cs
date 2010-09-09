@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 
 namespace control_test
 {
@@ -68,6 +69,12 @@ namespace control_test
             get { return _heightRate; }
         }
 
+        public int ValueLableWidth
+        {
+            get { return _valueLabelWidth; }
+            set { _valueLabelWidth = value; }
+        }
+
         public RectangleF Rect
         {
             set 
@@ -129,7 +136,7 @@ namespace control_test
             _status = status;
             _vStatues = status.ValueStatus;
 
-            _status.onValueChanged += new graphicRegionStatus.valueChanged(paintAll);
+            //_status.onValueChanged += new graphicRegionStatus.valueChanged(paintAll);
         }
 
         public graphicRegionStatus getStatus()
@@ -168,7 +175,7 @@ namespace control_test
             if (_gfx == null)
                 return;
 
-            filterValues(); // 需移除出该函数
+            filterValues();
             drawBorder();
             drawLines();
         }
@@ -186,7 +193,8 @@ namespace control_test
             float halfHeight = _rect.Height / 2;
             PointF middle_p1 = new PointF(_gfxRect.Left, _gfxRect.Bottom - halfHeight);
             PointF middle_p2 = new PointF(_gfxRect.Right, _gfxRect.Bottom - halfHeight);
-            _gfxLine.DrawLine(_borderPen, middle_p1, middle_p2);
+            _borderPen2.DashStyle = DashStyle.Dot;
+            _gfxLine.DrawLine(_borderPen2, middle_p1, middle_p2);
         }
 
         /// <summary>
@@ -201,7 +209,6 @@ namespace control_test
             float value = (_gfxRect.Bottom - _cursorPoint.Y) / _vStatues._YRate + _vStatues._minValue;
             _gfx.DrawRectangle(_borderPen, rect);
             _gfx.DrawString(value.ToString("0.00"), _defaultFont, _fontBrush, rect.Location);
-
         }
 
         /// <summary>

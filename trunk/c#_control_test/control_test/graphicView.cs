@@ -40,6 +40,7 @@ namespace control_test
         private bool _isDraggingBorder = false;
         private int _dragBorderIndex;
 
+        private graphicDateCoord _gDateCoord = new graphicDateCoord();
         private graphicRegionControl _regionControl = new graphicRegionControl();
 
         public graphicView()
@@ -85,6 +86,9 @@ namespace control_test
                 _gRegionList[i].CursorPoint = _cursorPoint;
                 _gRegionList[i].onPaint();
             }
+
+            _gDateCoord.onPaint();
+
             drawDraggingLine(_gfxBuffer.Graphics);
             _gfxBuffer.Render();
         }
@@ -100,6 +104,8 @@ namespace control_test
                 _gRegionList[i].CursorPoint = _cursorPoint;
                 _gRegionList[i].paintAll();
             }
+            _gDateCoord.paintAll();
+
             // 绘制十字光标，标题等
             paint();
         }
@@ -111,6 +117,7 @@ namespace control_test
             _gfxLineBuffer = BufferedGraphicsManager.Current.Allocate(_gfx, this.DisplayRectangle);
 
             _regionControl.setGfx(_gfxBuffer.Graphics, _gfxLineBuffer.Graphics);
+            _gDateCoord.setGfx(_gfxBuffer.Graphics, _gfxLineBuffer.Graphics);
 
             // refresh the graphic region size
             _rect.Size = this.Size;
@@ -128,6 +135,9 @@ namespace control_test
         {
             _dBorderList.Clear();
             float top = 0.0f;
+            const int dateCoordHeight = 20;
+            int regionHeight = _rect.Height - dateCoordHeight;
+
             for (int i = 0; i < _gRegionList.Count; ++i)
             {
                 RectangleF rect = new RectangleF();
@@ -137,7 +147,7 @@ namespace control_test
                 size.Width = (float)_rect.Width;
 
                 location.Y = top;
-                float height = _rect.Height * _gRegionList[i].HeightRate;
+                float height = regionHeight * _gRegionList[i].HeightRate;
                 size.Height = height;
 
                 top += height;
@@ -145,7 +155,6 @@ namespace control_test
                 rect.Location = location;
 
                 _gRegionList[i].Rect = rect;
-
                 if (i > 0)
                 {
                     dragBorder dborder = new dragBorder();
@@ -159,6 +168,18 @@ namespace control_test
                     _dBorderList.Add(dborder);
                 }
             }
+            // 日期标尺
+            int leftBlankWidth = _gRegionList[0].ValueLableWidth;
+            RectangleF dcRect = new RectangleF();
+            PointF dcLocation = new PointF();
+            SizeF dcSize = new SizeF();
+            dcLocation.X = _rect.X + leftBlankWidth;
+            dcLocation.Y = _rect.Bottom - dateCoordHeight;
+            dcSize.Width = _rect.Width - leftBlankWidth;
+            dcSize.Height = dateCoordHeight;
+            dcRect.Location = dcLocation;
+            dcRect.Size = dcSize;
+            _gDateCoord.Rect = dcRect;
         }
 
         private bool isInsideBorder(Point point, out int index)
@@ -193,18 +214,22 @@ namespace control_test
             if (e.Button == MouseButtons.Right)
             {
                 valueList vlist = new valueList();
+                valueList vlist2 = new valueList();
+                vlist2.initRandom();
                 vlist.initSin();
                 for (int i = 0; i < _gRegionList.Count; ++i)
                 {
                     _gRegionList[i].TitleText = "Sin";
                     _regionControl.setShowRange(i, 0, vlist.getLength() - 50);
                     _gRegionList[i].addValueList(vlist);
+                    _gRegionList[i].addValueList(vlist2);
                 }
 
                 Dictionary<int, INFO_TAG> tagDic = new Dictionary<int, INFO_TAG>();
                 tagDic.Add(30, INFO_TAG.DAY_INFO_MINE);
                 tagDic.Add(60, INFO_TAG.DAY_INFO_MINE);
                 _gRegionList[0].setTagDic(tagDic);
+                paintAll();
             }
 
             if (e.Button == MouseButtons.Left)
@@ -225,8 +250,6 @@ namespace control_test
 
             _lastPoint = e.Location;
             _cursorPoint = e.Location;
-
-            //debuger.trace("OnMouseMove cursor x", _cursorPoint.X);
 
             dragHandle(DRAG_MOUSE_STATUS.MOVE);
             paint();
