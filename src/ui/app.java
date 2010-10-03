@@ -5,7 +5,10 @@ import core.nes;
 
 public class app {
 	public static void main(String[] argv){
-		Timer timer = new Timer();
+		//Timer timer = new Timer();
+		nes g_nes = new nes();
+		g_nes.readFromFile("mario.nes");
+		
 		window wnd = new window();
 		wnd.showWindow();
 		while(true){
