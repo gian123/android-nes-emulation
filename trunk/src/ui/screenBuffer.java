@@ -15,6 +15,12 @@ public class screenBuffer {
 		
 	}
 	
+	public void clear(int rgb){
+		for (int w = 0; w < WIDTH; ++w)
+			for (int h = 0; h < HEIGHT; ++h)
+				_buffer.setRGB(w, h, rgb);
+	}
+	
 	public int[] getBufferData(){
 		DataBufferInt bufferInt = (DataBufferInt)_buffer.getRaster().getDataBuffer();
 		int[] ppuBuffer = bufferInt.getData();

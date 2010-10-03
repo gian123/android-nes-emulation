@@ -13,7 +13,7 @@ public class window {
 	private screenBuffer _screenBuffer = new screenBuffer();
 	
 	public window(){
-		
+		_screenBuffer.clear((int)0x00ff00ff);
 	}
 	
 	public void showWindow(){
