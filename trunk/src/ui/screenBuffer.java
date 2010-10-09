@@ -2,6 +2,7 @@ package ui;
 
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
 import java.awt.image.DataBufferInt;
 
 public class screenBuffer {
@@ -15,15 +16,25 @@ public class screenBuffer {
 		
 	}
 	
+	public int getPitch(){
+		return WIDTH;
+	}
+	
 	public void clear(int rgb){
 		for (int w = 0; w < WIDTH; ++w)
 			for (int h = 0; h < HEIGHT; ++h)
 				_buffer.setRGB(w, h, rgb);
 	}
 	
-	public int[] getBufferData(){
+	public int[] getBufferDataInt(){
 		DataBufferInt bufferInt = (DataBufferInt)_buffer.getRaster().getDataBuffer();
 		int[] ppuBuffer = bufferInt.getData();
+		return ppuBuffer;
+	}
+	
+	public byte[] getBufferDataByte(){
+		DataBufferByte bufferbyte = (DataBufferByte)_buffer.getRaster().getDataBuffer();
+		byte[] ppuBuffer = bufferbyte.getData();
 		return ppuBuffer;
 	}
 	

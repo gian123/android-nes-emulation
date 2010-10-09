@@ -27,8 +27,18 @@ public class memory {
 	 
 	 */
 	public rom _rom;
+	
+	public ppu _ppu;
+	
 	public byte[] _cpuRam = new byte[8 * 1024]; // 8k cpu ram
 
+	// 2 pattern table, ($0000-$0FFF $1000-$1FFF)
+	public byte[] _patternTable = new byte[8 * 1024];
+	// 32 * 20 tiles
+	public byte[] _nameTable = new byte[2 * 96];
+	public byte[] _attributeTable = new byte[2 * 64];
+	
+	public byte[] _spriteRam = new byte[256];
 	/*
 	 * read memory by cpu
 	 */
@@ -37,13 +47,36 @@ public class memory {
 		// mirrored $0000 - $07FF three times 
 		// ($0800 - $0FFF, $1000 - $1FFF )
 		//
-		if ((address & 0xFFFF) < 0x2000 ){
-			return _cpuRam[address & 0x07FF];
+		
+		switch (address >> 13){
+			case	0x00:	// $0000-$1FFF 
+				return	_cpuRam[address & 0x07FF];
+			case	0x01:	// $2000-$3FFF
+				return	_ppu.read( (short)(address & 0xE007) );
+//			case	0x02:	// $4000-$5FFF
+//				if( address < 0x4100 ) {
+//					return	ReadReg( address );
+//				} else {
+//					return	mapper->ReadLow( addr );
+//				}
+//				break; 
+//			case	0x03:	// $6000-$7FFF
+//				return	mapper->ReadLow( addr );
+			case	0x04:	// $8000-$9FFF
+			case	0x05:	// $A000-$BFFF
+			case	0x06:	 // $C000-$DFFF
+			case	0x07:	// $E000-$FFFF
+				return _rom.prgRom[address & 0xFFFF - 0x8000];
 		}
-		else if ((address & 0xFFFF) >= 0x8000 && (address & 0xFFFF) < 0xFFFF){
-			byte value = _rom.prgRom[address & 0xFFFF - 0x8000];
-			return value;
-		}
+		
+		
+//		if ((address & 0xFFFF) < 0x2000 ){
+//			return _cpuRam[address & 0x07FF];
+//		}
+//		else if ((address & 0xFFFF) >= 0x8000 && (address & 0xFFFF) < 0xFFFF){
+//			byte value = _rom.prgRom[address & 0xFFFF - 0x8000];
+//			return value;
+//		}
 		return 0;
 	}
 	

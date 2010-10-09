@@ -1,9 +1,9 @@
 package core;
 
 public class rom {
-	// program rom, store program instruction for excution
+	// program ROM, store program instruction for execution
 	public byte[] prgRom = null;
-	// character rom, store the pattern table
+	// character ROM, store the character pattern
 	public byte[] chrRom = null;
 	public byte[] trainer = null;
 	

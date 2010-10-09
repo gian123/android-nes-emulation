@@ -12,6 +12,10 @@ public class nes {
 		_cpu.reset();
 	}
 	
+	public memory getMemory(){
+		return _memory;
+	}
+	
 	public void readFromFile(String fileName){
 		
 		romHeader header = new romHeader();

@@ -10,6 +10,8 @@ public class app {
 		g_nes.readFromFile("mario.nes");
 		
 		window wnd = new window();
+		wnd.setNes(g_nes);
+		
 		wnd.showWindow();
 		while(true){
 			//timer.

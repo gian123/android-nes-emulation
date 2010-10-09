@@ -6,14 +6,25 @@ import java.awt.image.BufferedImage;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import core.*;
 
 public class window {
 	private JFrame _mainFrame =  new JFrame();
 	private JPanel _panel = new JPanel();
 	private screenBuffer _screenBuffer = new screenBuffer();
 	
+	private patternView _pView = new patternView();
+	
+	private nes _nes = null;
+	
 	public window(){
 		_screenBuffer.clear((int)0x00ff00ff);
+		// _pView.setInfo(_nes, _screenBuffer);
+	}
+	
+	public void setNes(nes n){
+		_nes = n;
+		_pView.setInfo(_nes, _screenBuffer);
 	}
 	
 	public void showWindow(){
@@ -23,6 +34,9 @@ public class window {
 		_mainFrame.add(_panel);
 		_mainFrame.setVisible(true);
 		_mainFrame.show();
+		
+		// test
+		_pView.setBuffer();
 	}
 	
 	public void paint(){
