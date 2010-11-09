@@ -42,12 +42,11 @@ public class memory {
 	/*
 	 * read memory by cpu
 	 */
-	public byte cpuReadByteFromMem(short address){
+	public byte readByte(short address){
 		//
 		// mirrored $0000 - $07FF three times 
 		// ($0800 - $0FFF, $1000 - $1FFF )
-		//
-		
+		//		
 		switch (address >> 13){
 			case	0x00:	// $0000-$1FFF 
 				return	_cpuRam[address & 0x07FF];
@@ -64,7 +63,7 @@ public class memory {
 //				return	mapper->ReadLow( addr );
 			case	0x04:	// $8000-$9FFF
 			case	0x05:	// $A000-$BFFF
-			case	0x06:	 // $C000-$DFFF
+			case	0x06:	// $C000-$DFFF
 			case	0x07:	// $E000-$FFFF
 				return _rom.prgRom[address & 0xFFFF - 0x8000];
 		}

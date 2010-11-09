@@ -4,6 +4,9 @@ public class ppu {
 	private final byte PPU_VBLANK_FLAG = (byte)0x80;
 	
 	private memory _mem = null;
+	private int _curScanLineIndex = 0;
+	private int _displayX = 0;
+	private int _displayY = 0;
 	
 	// $2000 write ppu control register 1
 	// $2001 write ppu control register 2
@@ -35,43 +38,96 @@ public class ppu {
 			// Read/Write Register
 			case	0x2002: // PPU Status Register(R)
 				data = _ppuReg[2]; //| VSSecurityData;
-				// PPU56Toggle = 0;
 				_ppuReg[2] &= ~PPU_VBLANK_FLAG;
 				break;
 			case	0x2004: // SPR_RAM I/O Register(RW)
 				data = _mem._spriteRam[_ppuReg[3]++];
 				break;
-			case	0x2007: // VRAM I/O Register(RW), reads or writes a byte from VRAM at current address
-				short addr = loopy_v & 0x3FFF;
-				data = PPU7_Temp;
-				if( _ppuReg[0] & PPU_INC32_BIT ) 
-					loopy_v+=32;
-				else				
-					loopy_v++;
-				if( addr >= 0x3000 ) {
-					if( addr >= 0x3F00 ) {
-						if( !(addr&0x0010) ) {
-							return	BGPAL[addr&0x000F];
-						} else {
-							return	SPPAL[addr&0x000F];
-						}
-					}
-					addr &= 0xEFFF;
-				}
-				PPU7_Temp = PPU_MEM_BANK[addr>>10][addr&0x03FF];
+			// VRAM I/O Register(RW), reads or writes a byte from VRAM at current address
+			case	0x2007: { 
+				return read2007();				
+			}
 		}
 
 		return	data;
 	}
 	
-	public void write(short address){
+	private byte read2007(){
+		return 0;
+	}
+	
+	
+	public void write(short address, byte value){
 		switch (address){
+		// ppu¿ØÖÆ¼Ä´æÆ÷ #1 (w)
 		case 0x2000:
+			write2000(value);
+			break;
+		// ppu¿ØÖÆ¼Ä´æÆ÷ #2 (w)
+		case 0x2001:
+			write2001(value);
+			break;
+		// ppu×´Ì¬¼Ä´æÆ÷
+		case 0x2002:
+			write2002(value);
+			break;
+		case 0x2003:
+			write2003(value);
+			break;
+		case 0x2004:
+			write2004(value);
+			break;
+		case 0x2005:
+			write2005(value);
+			break;
+		case 0x2006:
+			write2006(value);
+			break;
+		case 0x2007:
+			write2007(value);
 			break;
 		}
 	}
 	
-	public void scanLine(){
+	private void write2000(byte value){
+		
+	}
+	
+	private void write2001(byte value){
+		
+	}
+	
+	private void write2002(byte value){
+		
+	}
+	
+	private void write2003(byte value){
 			
+	}
+	private void write2004(byte value){
+		
+	}
+	private void write2005(byte value){
+		
+	}
+	private void write2006(byte value){
+		
+	}
+	private void write2007(byte value){
+		
+	}
+	
+	
+	public void scanLine(){
+		rendBackground();
+		rendSprites();
+	}
+	
+	private void rendBackground(){
+		
+	}
+	
+	private void rendSprites(){
+		
 	}
 }
