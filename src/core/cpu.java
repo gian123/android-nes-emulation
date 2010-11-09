@@ -30,74 +30,79 @@ public class cpu {
 		}
 	}
 
-	private void memReadImmdiate(){
-		_byte_data = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+	/// read method
+	private void readImmdiate(){
+		_byte_data = _cpuMemory.readByte(_register.PC++);
+		_excutedCycles ++;
 	}
 	
 	// zero page addressing
-	private void memReadZeroPage(){
-		_word_effectiveAddress = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+	private void readZeroPage(){
+		_word_effectiveAddress = _cpuMemory.readByte(_register.PC++);
 		_byte_data = _cpuMemory.cpuReadByteZeroPage((byte)_word_effectiveAddress);
+		_excutedCycles += 2;
 	}
 	
-	private void memReadZeroPageX(){
-  		_word_effectiveAddress = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+	private void readZeroPageX(){
+  		_word_effectiveAddress = _cpuMemory.readByte(_register.PC++);
   		_word_effectiveAddress += _register.X;
   		_byte_data = _cpuMemory.cpuReadByteZeroPage((byte)_word_effectiveAddress);
+  		_excutedCycles += 3;
 	}
 	
-	private void memReadZeroPageY(){
-		_word_effectiveAddress = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+	private void readZeroPageY(){
+		_word_effectiveAddress = _cpuMemory.readByte(_register.PC++);
   		_word_effectiveAddress += _register.Y;
   		_byte_data = _cpuMemory.cpuReadByteZeroPage((byte)_word_effectiveAddress);
+  		_excutedCycles += 3;
 	}
 	// end of zero page addressing
 	
-	private void memReadAbsolute(){
+	private void readAbsolute(){
 		_word_effectiveAddress = _cpuMemory.cpuReadWordFromMem(_register.PC);
 		_register.PC += 2;
-		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
+		_byte_data = _cpuMemory.readByte(_word_effectiveAddress);
 	}
 	
-	private void memReadAbsoluteX(){
+	private void readAbsoluteX(){
 		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
 		_register.PC += 2;
 		_word_effectiveAddress = (short)(_word_effectiveAddressTemp + _register.X);
-		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
+		_byte_data = _cpuMemory.readByte(_word_effectiveAddress);
 	}
 	
-	private void memReadAbsoluteY(){
+	private void readAbsoluteY(){
 		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
 		_register.PC += 2;
 		_word_effectiveAddress = (short)(_word_effectiveAddressTemp + _register.Y);
-		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
+		_byte_data = _cpuMemory.readByte(_word_effectiveAddress);
 	}
 	
-	private void memReadIndirect(){
-		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
-		_register.PC += 2;
-		_word_effectiveAddress = _cpuMemory.cpuReadWordFromMem(_word_effectiveAddressTemp);
-		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
-	}
+//	private void readIndirect(){
+//		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
+//		_register.PC += 2;
+//		_word_effectiveAddress = _cpuMemory.cpuReadWordFromMem(_word_effectiveAddressTemp);
+//		_byte_data = _cpuMemory.readByte(_word_effectiveAddress);
+//	}
 	
-	private void memReadIndexedIndirectX(){
-		_byte_data = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+	private void readIndexedIndirectX(){
+		_byte_data = _cpuMemory.readByte(_register.PC++);
 		_word_effectiveAddress = _cpuMemory.cpuReadWordZeroPage((byte)(_byte_data + _register.X));
-		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
+		_byte_data = _cpuMemory.readByte(_word_effectiveAddress);
 	}
 	
-	private void memReadIndirectIndexedY(){
-		_byte_data = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+	private void readIndirectIndexedY(){
+		_byte_data = _cpuMemory.readByte(_register.PC++);
 		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordZeroPage(_byte_data); // read from zero page
 		_word_effectiveAddress = (short)(_word_effectiveAddressTemp + _register.Y);
-		_byte_data = _cpuMemory.cpuReadByteFromMem(_word_effectiveAddress);
+		_byte_data = _cpuMemory.readByte(_word_effectiveAddress);
 	}
 	
-	private void memWriteZeroPage(){
+	private void writeZeroPage(){
 		_cpuMemory.cpuWriteByteToZeroPage((byte)_word_effectiveAddress, _byte_data);
 	}
 	
-	private void memWriteEffectiveAddress(){
+	private void writeEffectiveAddress(){
 		_cpuMemory.cpuWriteByteToMem(_word_effectiveAddress, _byte_data);
 	}
 	//
@@ -137,7 +142,7 @@ public class cpu {
 		setNZFlag(_byte_data);
 	}
 	
-	// this func is for what ?
+	// if cross page, cpu cycle add 1
 	private void checkEA(){
 		if ((_word_effectiveAddressTemp & 0xFF00) != (_word_effectiveAddress & 0xFF00))
 			_excutedCycles += 1;
@@ -149,42 +154,40 @@ public class cpu {
 		_excutedCycles = 0;
 		
 		byte opCode = 0;
-		opCode = _cpuMemory.cpuReadByteFromMem(_register.PC++);
+		opCode = _cpuMemory.readByte(_register.PC++);
 		
-		switch(opCode){
-		
-		
+		switch(opCode){		
 		// ADC #$??
 		case	(byte)0x69: {
-			memReadImmdiate();
+			readImmdiate();
 			cpuExecADC();
 			_excutedCycles += 2;
 		}
 			break;
 			// ADC $??
 		case	(byte)0x65: {
-			memReadZeroPage();
+			readZeroPage();
 			cpuExecADC();
 			_excutedCycles += 3;
 		}
 			break;
 			 // ADC $??,X
 		case	(byte)0x75:{
-			memReadZeroPageX();
+			readZeroPageX();
 			cpuExecADC();
 			_excutedCycles += 4;
 		}
 			break;
 			// ADC $????
 		case	(byte)0x6D: {
-			memReadAbsolute();
+			readAbsolute();
 			cpuExecADC();
 			_excutedCycles += 4;
 		}
 			break;
 			// ADC $????,X
 		case	(byte)0x7D: {
-			memReadAbsoluteX();
+			readAbsoluteX();
 			cpuExecADC();
 			checkEA();
 			_excutedCycles += 4;
@@ -192,7 +195,7 @@ public class cpu {
 			break;
 			 // ADC $????,Y
 		case	(byte)0x79:{
-			memReadAbsoluteY();
+			readAbsoluteY();
 			cpuExecADC();
 			checkEA();
 			_excutedCycles += 4;
@@ -200,14 +203,14 @@ public class cpu {
 			break;
 			// ADC ($??,X)
 		case	(byte)0x61: {
-			memReadIndexedIndirectX();
+			readIndexedIndirectX();
 			cpuExecADC();
 			_excutedCycles += 6;
 		}
 			break;
 			// ADC ($??),Y
 		case	(byte)0x71: {
-			memReadIndirectIndexedY();
+			readIndirectIndexedY();
 			cpuExecADC();
 			checkEA();
 			_excutedCycles += 6;
@@ -215,21 +218,21 @@ public class cpu {
 			break;
 			// SBC #$??
 		case	(byte)0xE9: {
-			memReadImmdiate();
+			readImmdiate();
 			cpuExecSBC();
 			_excutedCycles += 2;
 		}
 			break;
 			// SBC $??
 		case	(byte)0xE5: {
-			memReadZeroPage();
+			readZeroPage();
 			cpuExecSBC();
 			_excutedCycles += 3;
 		}
 			break;
 			// SBC $??,X
 		case	(byte) 0xF5: {
-			memReadZeroPageX();
+			readZeroPageX();
 			cpuExecSBC();
 			_excutedCycles += 4;
 		}
@@ -237,14 +240,14 @@ public class cpu {
 			break;
 			// SBC $????
 		case	(byte)0xED:{
-			memReadAbsolute();
+			readAbsolute();
 			cpuExecSBC();
 			_excutedCycles += 4;
 		}
 			break;
 			// SBC $????,X
 		case	(byte)0xFD: {
-			memReadAbsoluteX();
+			readAbsoluteX();
 			cpuExecSBC();
 			checkEA();
 			_excutedCycles += 4;
@@ -252,7 +255,7 @@ public class cpu {
 			break;
 			// SBC $????,Y
 		case	(byte)0xF9: {
-			memReadAbsoluteY();
+			readAbsoluteY();
 			cpuExecSBC();
 			checkEA();
 			_excutedCycles += 4;
@@ -260,14 +263,14 @@ public class cpu {
 			break;
 			// SBC ($??,X)
 		case	(byte)0xE1: {
-			memReadIndexedIndirectX();
+			readIndexedIndirectX();
 			cpuExecSBC();
 			_excutedCycles += 6;
 		}
 			break;
 			// SBC ($??),Y
 		case	(byte)0xF1: {
-			memReadIndirectIndexedY();
+			readIndirectIndexedY();
 			cpuExecSBC();
 			checkEA();
 			_excutedCycles += 5;
@@ -276,33 +279,33 @@ public class cpu {
 			
 			// DEC $??
 		case	(byte)0xC6: {
-			memReadZeroPage();
+			readZeroPage();
 			cpuExecDec();
-			memWriteZeroPage();
+			writeZeroPage();
 			_excutedCycles += 5;
 		}
 			break;
 			// DEC $??,X
 		case	(byte)0xD6: {
-			memReadZeroPageX();
+			readZeroPageX();
 			cpuExecDec();
-			memWriteZeroPage();
+			writeZeroPage();
 			_excutedCycles += 6;
 		}
 			break;
 			// DEC $????
 		case	(byte)0xCE:{
-			memReadAbsolute();
+			readAbsolute();
 			cpuExecDec();
-			memWriteEffectiveAddress();
+			writeEffectiveAddress();
 			_excutedCycles += 6;
 		}
 			break;
 			// DEC $????,X
 		case	(byte)0xDE:{
-			memReadAbsoluteX();
+			readAbsoluteX();
 			cpuExecDec();
-			memWriteEffectiveAddress();
+			writeEffectiveAddress();
 			_excutedCycles += 7;
 		}
 			break;
@@ -320,33 +323,33 @@ public class cpu {
 			break;
 			// INC $??
 		case	(byte)0xE6: {
-			memReadZeroPage();
+			readZeroPage();
 			setNZFlag(++_byte_data);
-			memWriteZeroPage();
+			writeZeroPage();
 			_excutedCycles += 5;
 		}
 			break;
 			// INC $??,X
 		case	(byte)0xF6: {
-			memReadZeroPageX();
+			readZeroPageX();
 			setNZFlag(++_byte_data);
-			memWriteZeroPage();
+			writeZeroPage();
 			_excutedCycles += 6;
 		}
 			break;
 			// INC $????
 		case	(byte)0xEE:{
-			memReadAbsolute();
+			readAbsolute();
 			setNZFlag(++_byte_data);
-			memWriteEffectiveAddress();
+			writeEffectiveAddress();
 			_excutedCycles += 6;
 		}
 			break;
 			// INC $????,X
 		case	(byte)0xFE: {
-			memReadAbsoluteX();
+			readAbsoluteX();
 			setNZFlag(++_byte_data);
-			memWriteEffectiveAddress();
+			writeEffectiveAddress();
 			_excutedCycles += 7;
 		}
 			break;
@@ -364,7 +367,7 @@ public class cpu {
 			break;
 			// AND #$??
 		case	(byte)0x29: {
-			memReadImmdiate();
+			readImmdiate();
 			_register.A &= _byte_data;
 			setNZFlag(_register.A);
 			_excutedCycles += 2;
@@ -372,7 +375,7 @@ public class cpu {
 			break;
 			// AND $??
 		case	(byte)0x25: {
-			memReadZeroPage();
+			readZeroPage();
 			_register.A &= _byte_data;
 			setNZFlag(_register.A);
 			_excutedCycles += 3;
@@ -380,7 +383,7 @@ public class cpu {
 			break;
 			// AND $??,X
 		case	(byte)0x35: {
-			memReadZeroPageX();
+			readZeroPageX();
 			_register.A &= _byte_data;
 			setNZFlag(_register.A);
 			_excutedCycles += 4;
@@ -388,7 +391,7 @@ public class cpu {
 			break;
 			// AND $????
 		case	(byte)0x2D: {
-			memReadAbsolute();
+			readAbsolute();
 			_register.A &= _byte_data;
 			setNZFlag(_register.A);
 			_excutedCycles += 4;
@@ -396,7 +399,7 @@ public class cpu {
 			break;
 			// AND $????,X
 		case	(byte)0x3D: {
-			memReadAbsoluteX();
+			readAbsoluteX();
 			_register.A &= _byte_data;
 			setNZFlag(_register.A);
 			checkEA();
@@ -405,7 +408,7 @@ public class cpu {
 			break;
 			// AND $????,Y
 		case	(byte)0x39: {
-			memReadAbsoluteY();
+			readAbsoluteY();
 			_register.A &= _byte_data;
 			setNZFlag(_register.A);
 			checkEA();
@@ -414,7 +417,7 @@ public class cpu {
 			break;
 			// AND ($??,X)
 		case	(byte)0x21:{
-			memReadIndexedIndirectX();
+			readIndexedIndirectX();
 			_register.A &= _byte_data;
 			setNZFlag(_register.A);
 			_excutedCycles += 6;
@@ -422,7 +425,7 @@ public class cpu {
 			break;
 			// AND ($??),Y
 		case	(byte)0x31: {
-			memReadIndirectIndexedY();
+			readIndirectIndexedY();
 			_register.A &= _byte_data;
 			setNZFlag(_register.A);
 			checkEA();
