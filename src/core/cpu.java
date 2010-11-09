@@ -1,7 +1,7 @@
 package core;
 
 public class cpu {
-	private r6502Register _register = new r6502Register();
+	private cpuRegister _register = new cpuRegister();
 	private memory _cpuMemory = null;
 	
 	private byte  _byte_data;
@@ -20,7 +20,7 @@ public class cpu {
 	
 	public void reset(){
 		_register.reset();
-		_register.PC = _cpuMemory.cpuReadWordFromMem(r6502Register.RES_VECTOR);
+		_register.PC = _cpuMemory.cpuReadWordFromMem(cpuRegister.RES_VECTOR);
 		
 	}
 	
@@ -58,10 +58,19 @@ public class cpu {
 	}
 	// end of zero page addressing
 	
+	//
+	// if cross page, cpu cycle add 1
+	//
+	private void checkEA(){
+		if ((_word_effectiveAddressTemp & 0xFF00) != (_word_effectiveAddress & 0xFF00))
+			_excutedCycles += 1;
+	}
+	
 	private void readAbsolute(){
 		_word_effectiveAddress = _cpuMemory.cpuReadWordFromMem(_register.PC);
 		_register.PC += 2;
 		_byte_data = _cpuMemory.readByte(_word_effectiveAddress);
+		_excutedCycles += 4;		
 	}
 	
 	private void readAbsoluteX(){
@@ -69,6 +78,8 @@ public class cpu {
 		_register.PC += 2;
 		_word_effectiveAddress = (short)(_word_effectiveAddressTemp + _register.X);
 		_byte_data = _cpuMemory.readByte(_word_effectiveAddress);
+		_excutedCycles += 4;
+		checkEA();
 	}
 	
 	private void readAbsoluteY(){
@@ -76,6 +87,7 @@ public class cpu {
 		_register.PC += 2;
 		_word_effectiveAddress = (short)(_word_effectiveAddressTemp + _register.Y);
 		_byte_data = _cpuMemory.readByte(_word_effectiveAddress);
+		checkEA();
 	}
 	
 //	private void readIndirect(){
@@ -89,6 +101,7 @@ public class cpu {
 		_byte_data = _cpuMemory.readByte(_register.PC++);
 		_word_effectiveAddress = _cpuMemory.cpuReadWordZeroPage((byte)(_byte_data + _register.X));
 		_byte_data = _cpuMemory.readByte(_word_effectiveAddress);
+		_excutedCycles += 6;
 	}
 	
 	private void readIndirectIndexedY(){
@@ -96,6 +109,8 @@ public class cpu {
 		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordZeroPage(_byte_data); // read from zero page
 		_word_effectiveAddress = (short)(_word_effectiveAddressTemp + _register.Y);
 		_byte_data = _cpuMemory.readByte(_word_effectiveAddress);
+		_excutedCycles += 5;
+		checkEA();
 	}
 	
 	private void writeZeroPage(){
@@ -110,16 +125,16 @@ public class cpu {
 	//
 	private void setNZFlag(byte data){
 		if (data == 0x0)
-			_register.P |= r6502Register.Z_FLAG;
+			_register.P |= cpuRegister.Z_FLAG;
 		if ((data & 0x80) != 0x0)
-			_register.P |= r6502Register.N_FLAG;
+			_register.P |= cpuRegister.N_FLAG;
 	}
 
 	private void cpuExecADC(){
-		_word_temp = (short)(_byte_data + _register.A + (_register.P & r6502Register.C_FLAG));
-		setCpuFlag(_word_temp > (short)0xFF, r6502Register.C_FLAG);
+		_word_temp = (short)(_byte_data + _register.A + (_register.P & cpuRegister.C_FLAG));
+		setCpuFlag(_word_temp > (short)0xFF, cpuRegister.C_FLAG);
 		// overflow .. set when negative + negtive = positive or postive + postive  = negative
-		setCpuFlag(((_register.A ^ _word_temp) & (_byte_data ^ _word_temp) & 0x80) != 0, r6502Register.V_FLAG);
+		setCpuFlag(((_register.A ^ _word_temp) & (_byte_data ^ _word_temp) & 0x80) != 0, cpuRegister.V_FLAG);
 		_register.A = (byte)_word_temp;
 		setNZFlag(_register.A);
 	}
@@ -128,10 +143,10 @@ public class cpu {
 	// 
 	//
 	private void cpuExecSBC(){
-		 _word_temp = (short) ((short)_register.A - (short)_byte_data - (short)(~(_register.P & r6502Register.C_FLAG)));
-		 //此处 flag 的设置？？ 检查溢出
-		 setCpuFlag(((_register.A ^ _byte_data) & (_register.A ^ _word_temp) & 0x80) != 0, r6502Register.V_FLAG);
-		 setCpuFlag(_word_temp < 0x100, r6502Register.C_FLAG);
+		 _word_temp = (short) ((short)_register.A - (short)_byte_data - (short)(~(_register.P & cpuRegister.C_FLAG)));
+		 
+		 setCpuFlag(((_register.A ^ _byte_data) & (_register.A ^ _word_temp) & 0x80) != 0, cpuRegister.V_FLAG);
+		 setCpuFlag(_word_temp < 0x100, cpuRegister.C_FLAG);
 		 //
 		 _register.A = (byte)_word_temp;
 		 setNZFlag(_register.A);
@@ -142,11 +157,113 @@ public class cpu {
 		setNZFlag(_byte_data);
 	}
 	
-	// if cross page, cpu cycle add 1
-	private void checkEA(){
-		if ((_word_effectiveAddressTemp & 0xFF00) != (_word_effectiveAddress & 0xFF00))
-			_excutedCycles += 1;
+	private void cpuExecAsl(byte data){
+		setCpuFlag((data & 0x80) != 0, cpuRegister.C_FLAG);
+		data <<= 1;
+		setNZFlag(data);
 	}
+	
+	private void cpuExecBit(){
+		setNZFlag((byte)(_byte_data & _register.A));
+		setCpuFlag((_byte_data & 0x80) != 0, cpuRegister.N_FLAG);
+		setCpuFlag((_byte_data & 0x40) != 0, cpuRegister.V_FLAG);
+	}
+	
+	private void cpuExecEOR(){
+		_register.A ^= _byte_data;
+		setNZFlag(_register.A);
+	}
+	
+	private void cpuExecLSR(byte data){
+		setCpuFlag((data & 0x80) != 0, cpuRegister.C_FLAG);
+		data >>= 1;
+		setNZFlag(data);
+	}
+	
+	private void cpuExecORA(){
+		_register.A |= _byte_data;
+		setNZFlag(_register.A);
+	}
+	
+	private void cpuExecROL(byte data){
+		if ((_register.P & cpuRegister.C_FLAG) != 0){
+			setCpuFlag((data & 0x80) != 0, cpuRegister.C_FLAG);
+			data = (byte)((data << 1) | 0x01);
+		}
+		else{
+			setCpuFlag((data & 0x80) != 0, cpuRegister.C_FLAG);
+			data <<= 1;
+		}		
+		setNZFlag(data);
+	}
+	
+	private void cpuExecROR(byte data){
+		if ((_register.P & cpuRegister.C_FLAG) != 0){
+			setCpuFlag((data & 0x01) != 0, cpuRegister.C_FLAG);
+			data = (byte)((data >> 1) | 0x80);
+		}
+		else{
+			setCpuFlag((data & 0x80) != 0, cpuRegister.C_FLAG);
+			data >>= 1;
+		}		
+		setNZFlag(data);	
+	}
+	
+	private void cpuExecLDA(){
+		_register.A = _byte_data;
+		setNZFlag(_register.A);
+	}
+	
+	private void cpuExecLDX(){
+		_register.X = _byte_data;
+		setNZFlag(_register.X);
+	}
+	
+	private void cpuExecLDY(){
+		_register.Y = _byte_data;
+		setNZFlag(_register.Y);
+	}
+	
+	private void cpuExecSTA(){
+		_byte_data = _register.A;
+	}
+	
+	private void cpuExecSTX(){
+		_byte_data = _register.X;
+	}
+	
+	private void cpuExecSTY(){
+		_byte_data = _register.Y;
+	}
+	
+	private void cpuExecTAX(){
+		_register.X = _register.A;
+		setNZFlag(_register.X);
+	}
+	private void cpuExecTXA(){
+		_register.A = _register.X;
+		setNZFlag(_register.A);
+	}
+	
+	private void cpuExecTAY(){
+		_register.Y = _register.A;
+		setNZFlag(_register.Y);
+	}
+	
+	private void cpuExecTYA(){
+		_register.A = _register.Y;
+		setNZFlag(_register.A);
+	}
+	
+	private void cpuExecTSX(){
+		_register.X = _register.SP;
+		setNZFlag(_register.X);
+	}
+	
+	private void cpuExecTXS(){
+		_register.SP = _register.X;		
+	}
+	
 	/*
 	 * run cpu for certain cycles
 	 */
@@ -161,128 +278,113 @@ public class cpu {
 		case	(byte)0x69: {
 			readImmdiate();
 			cpuExecADC();
-			_excutedCycles += 2;
+			//_excutedCycles += 2;
 		}
 			break;
 			// ADC $??
 		case	(byte)0x65: {
 			readZeroPage();
 			cpuExecADC();
-			_excutedCycles += 3;
+			//_excutedCycles += 3;
 		}
 			break;
 			 // ADC $??,X
 		case	(byte)0x75:{
 			readZeroPageX();
 			cpuExecADC();
-			_excutedCycles += 4;
+			//_excutedCycles += 4;
 		}
 			break;
 			// ADC $????
 		case	(byte)0x6D: {
 			readAbsolute();
 			cpuExecADC();
-			_excutedCycles += 4;
+			//_excutedCycles += 4;
 		}
 			break;
 			// ADC $????,X
 		case	(byte)0x7D: {
 			readAbsoluteX();
 			cpuExecADC();
-			checkEA();
-			_excutedCycles += 4;
+			//checkEA();
+			//_excutedCycles += 4;
 		}
 			break;
 			 // ADC $????,Y
 		case	(byte)0x79:{
 			readAbsoluteY();
 			cpuExecADC();
-			checkEA();
-			_excutedCycles += 4;
+			//checkEA();
+			//_excutedCycles += 4;
 		}
 			break;
 			// ADC ($??,X)
 		case	(byte)0x61: {
 			readIndexedIndirectX();
 			cpuExecADC();
-			_excutedCycles += 6;
+			//_excutedCycles += 6;
 		}
 			break;
 			// ADC ($??),Y
 		case	(byte)0x71: {
 			readIndirectIndexedY();
 			cpuExecADC();
-			checkEA();
-			_excutedCycles += 6;
 		}
 			break;
 			// SBC #$??
 		case	(byte)0xE9: {
 			readImmdiate();
-			cpuExecSBC();
-			_excutedCycles += 2;
+			cpuExecSBC();			
 		}
 			break;
 			// SBC $??
 		case	(byte)0xE5: {
 			readZeroPage();
-			cpuExecSBC();
-			_excutedCycles += 3;
+			cpuExecSBC();			
 		}
 			break;
 			// SBC $??,X
 		case	(byte) 0xF5: {
 			readZeroPageX();
 			cpuExecSBC();
-			_excutedCycles += 4;
 		}
-			
 			break;
 			// SBC $????
 		case	(byte)0xED:{
 			readAbsolute();
 			cpuExecSBC();
-			_excutedCycles += 4;
 		}
 			break;
 			// SBC $????,X
 		case	(byte)0xFD: {
 			readAbsoluteX();
 			cpuExecSBC();
-			checkEA();
-			_excutedCycles += 4;
 		}
 			break;
 			// SBC $????,Y
 		case	(byte)0xF9: {
 			readAbsoluteY();
 			cpuExecSBC();
-			checkEA();
-			_excutedCycles += 4;
 		}
 			break;
 			// SBC ($??,X)
 		case	(byte)0xE1: {
 			readIndexedIndirectX();
 			cpuExecSBC();
-			_excutedCycles += 6;
 		}
 			break;
 			// SBC ($??),Y
 		case	(byte)0xF1: {
 			readIndirectIndexedY();
-			cpuExecSBC();
-			checkEA();
-			_excutedCycles += 5;
+			cpuExecSBC();			
 		}
-			break;
-			
+			break;			
 			// DEC $??
 		case	(byte)0xC6: {
 			readZeroPage();
 			cpuExecDec();
 			writeZeroPage();
-			_excutedCycles += 5;
+			//_excutedCycles += 5;
 		}
 			break;
 			// DEC $??,X
@@ -290,7 +392,7 @@ public class cpu {
 			readZeroPageX();
 			cpuExecDec();
 			writeZeroPage();
-			_excutedCycles += 6;
+			//_excutedCycles += 6;
 		}
 			break;
 			// DEC $????
@@ -298,7 +400,7 @@ public class cpu {
 			readAbsolute();
 			cpuExecDec();
 			writeEffectiveAddress();
-			_excutedCycles += 6;
+			//_excutedCycles += 6;
 		}
 			break;
 			// DEC $????,X
@@ -306,7 +408,7 @@ public class cpu {
 			readAbsoluteX();
 			cpuExecDec();
 			writeEffectiveAddress();
-			_excutedCycles += 7;
+			//_excutedCycles += 7;
 		}
 			break;
 			// DEX
@@ -326,7 +428,7 @@ public class cpu {
 			readZeroPage();
 			setNZFlag(++_byte_data);
 			writeZeroPage();
-			_excutedCycles += 5;
+			//_excutedCycles += 5;
 		}
 			break;
 			// INC $??,X
@@ -334,7 +436,7 @@ public class cpu {
 			readZeroPageX();
 			setNZFlag(++_byte_data);
 			writeZeroPage();
-			_excutedCycles += 6;
+			//_excutedCycles += 6;
 		}
 			break;
 			// INC $????
@@ -342,7 +444,7 @@ public class cpu {
 			readAbsolute();
 			setNZFlag(++_byte_data);
 			writeEffectiveAddress();
-			_excutedCycles += 6;
+			//_excutedCycles += 6;
 		}
 			break;
 			// INC $????,X
@@ -350,7 +452,7 @@ public class cpu {
 			readAbsoluteX();
 			setNZFlag(++_byte_data);
 			writeEffectiveAddress();
-			_excutedCycles += 7;
+			//_excutedCycles += 7;
 		}
 			break;
 			// INX
@@ -431,247 +533,323 @@ public class cpu {
 			checkEA();
 			_excutedCycles += 6;
 		}
-			break;
-			
-			// ASL A
-		case	(byte)0x0A: {
-			
-		}
+			break;						
+		case	(byte)0x0A: // ASL A
+			cpuExecAsl(_register.A);
+			_excutedCycles += 2;		
 			break;
 		case	(byte)0x06: // ASL $??
-			
+			readZeroPage();
+			cpuExecAsl(_byte_data);
+			writeZeroPage();
 			break;
 		case	(byte)0x16: // ASL $??,X
-			
+			readZeroPageX();
+			cpuExecAsl(_byte_data);
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x0E: // ASL $????
-			
+			readAbsolute();
+			cpuExecAsl(_byte_data);
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x1E: // ASL $????,X
-			
+			readAbsoluteX();
+			cpuExecAsl(_byte_data);
+			writeEffectiveAddress();
 			break;
-
 		case	(byte)0x24: // BIT $??
-			
+			readZeroPage();
+			cpuExecBit();
 			break;
 		case	(byte)0x2C: // BIT $????
-			
+			readAbsolute();
+			cpuExecBit();
 			break;
-
 		case	(byte)0x49: // EOR #$??
-			
+			readImmdiate();
+			cpuExecEOR();
 			break;
 		case	(byte)0x45: // EOR $??
-			
+			readZeroPage();
+			cpuExecEOR();
 			break;
 		case	(byte)0x55: // EOR $??,X
-			
+			readZeroPageX();
+			cpuExecEOR();
 			break;
 		case	(byte)0x4D: // EOR $????
-			
+			readAbsolute();
+			cpuExecEOR();
 			break;
 		case	(byte)0x5D: // EOR $????,X
-			
+			readAbsoluteX();
+			cpuExecEOR();
 			break;
 		case	(byte)0x59: // EOR $????,Y
-			
+			readAbsoluteY();
+			cpuExecEOR();
 			break;
 		case	(byte)0x41: // EOR ($??,X)
-			
+			readIndexedIndirectX();
+			cpuExecEOR();
 			break;
 		case	(byte)0x51: // EOR ($??),Y
-			
+			readIndirectIndexedY();
+			cpuExecEOR();
 			break;
-
 		case	(byte)0x4A: // LSR A
-			
+			cpuExecLSR(_register.A);
 			break;
 		case	(byte)0x46: // LSR $??
-			
+			readZeroPage();
+			cpuExecLSR(_byte_data);
 			break;
 		case	(byte)0x56: // LSR $??,X
-			
+			readZeroPageX();
+			cpuExecLSR(_byte_data);
 			break;
 		case	(byte)0x4E: // LSR $????
-			
+			readAbsolute();
+			cpuExecLSR(_byte_data);
 			break;
 		case	(byte)0x5E: // LSR $????,X
-			
+			readAbsoluteY();
+			cpuExecLSR(_byte_data);
 			break;
-
 		case	(byte)0x09: // ORA #$??
-			
+			readImmdiate();
+			cpuExecORA();
 			break;
 		case	(byte)0x05: // ORA $??
-			
+			readZeroPage();
+			cpuExecORA();
 			break;
 		case	(byte)0x15: // ORA $??,X
-			
+			readZeroPageX();
+			cpuExecORA();
 			break;
 		case	(byte)0x0D: // ORA $????
-			
+			readAbsolute();
+			cpuExecORA();
 			break;
 		case	(byte)0x1D: // ORA $????,X
-			
+			readAbsoluteX();
+			cpuExecORA();
 			break;
 		case	(byte)0x19: // ORA $????,Y
-			
+			readAbsoluteY();
+			cpuExecORA();
 			break;
 		case	(byte)0x01: // ORA ($??,X)
-			
+			readIndexedIndirectX();
+			cpuExecORA();
 			break;
 		case	(byte)0x11: // ORA ($??),Y
-			
+			readIndirectIndexedY();
+			cpuExecORA();
 			break;
-
 		case	(byte)0x2A: // ROL A
-			
+			cpuExecROL(_register.A);
 			break;
 		case	(byte)0x26: // ROL $??
-			
+			readZeroPage();
+			cpuExecROL(_byte_data);
 			break;
 		case	(byte)0x36: // ROL $??,X
-			
+			readZeroPageX();
+			cpuExecROL(_byte_data);
 			break;
 		case	(byte)0x2E: // ROL $????
-			
+			readAbsolute();
+			cpuExecROL(_byte_data);	
 			break;
 		case	(byte)0x3E: // ROL $????,X
-			
+			readAbsoluteX();
+			cpuExecROL(_byte_data);
 			break;
-
 		case	(byte)0x6A: // ROR A
-			
+			cpuExecROR(_register.A);
 			break;
 		case	(byte)0x66: // ROR $??
-			
+			readZeroPage();
+			cpuExecROR(_byte_data);
 			break;
 		case	(byte)0x76: // ROR $??,X
-			
+			readZeroPageX();
+			cpuExecROR(_byte_data);
 			break;
 		case	(byte)0x6E: // ROR $????
-			
+			readAbsolute();
+			cpuExecROR(_byte_data);
 			break;
 		case	(byte)0x7E: // ROR $????,X
-			
+			readAbsoluteX();
+			cpuExecROR(_byte_data);
 			break;
-
 		case	(byte)0xA9: // LDA #$??
-			
+			readImmdiate();
+			cpuExecLDA();
 			break;
 		case	(byte)0xA5: // LDA $??
-			
+			readZeroPage();
+			cpuExecLDA();
 			break;
 		case	(byte)0xB5: // LDA $??,X
-			
+			readZeroPageX();
+			cpuExecLDA();
 			break;
 		case	(byte)0xAD: // LDA $????
-			
+			readAbsolute();
+			cpuExecLDA();
 			break;
 		case	(byte)0xBD: // LDA $????,X
-			
+			readAbsoluteX();
+			cpuExecLDA();
 			break;
 		case	(byte)0xB9: // LDA $????,Y
-			
+			readAbsoluteY();
+			cpuExecLDA();
 			break;
 		case	(byte)0xA1: // LDA ($??,X)
-			
+			readIndexedIndirectX();
+			cpuExecLDA();
 			break;
 		case	(byte)0xB1: // LDA ($??),Y
-			
+			readIndirectIndexedY();
+			cpuExecLDA();
 			break;
-
 		case	(byte)0xA2: // LDX #$??
-			
+			readImmdiate();
+			cpuExecLDX();
 			break;
 		case	(byte)0xA6: // LDX $??
-			
+			readZeroPage();
+			cpuExecLDX();
 			break;
 		case	(byte)0xB6: // LDX $??,Y
-			
+			readZeroPageY();		
+			cpuExecLDX();
 			break;
 		case	(byte)0xAE: // LDX $????
-			
+			readAbsolute();		
+			cpuExecLDX();
 			break;
 		case	(byte)0xBE: // LDX $????,Y
-			
+			readAbsoluteY();
+			cpuExecLDX();
 			break;
-
 		case	(byte)0xA0: // LDY #$??
-			
+			readImmdiate();
+			cpuExecLDY();
 			break;
 		case	(byte)0xA4: // LDY $??
-			
+			readZeroPage();
+			cpuExecLDY();
 			break;
 		case	(byte)0xB4: // LDY $??,X
-			
+			readZeroPageX();
+			cpuExecLDY();
 			break;
 		case	(byte)0xAC: // LDY $????
-			
+			readAbsolute();
+			cpuExecLDY();
 			break;
 		case	(byte)0xBC: // LDY $????,X
-			
+			readAbsoluteX();
+			cpuExecLDY();
 			break;
-
 		case	(byte)0x85: // STA $??
-			
+			readZeroPage();
+			cpuExecSTA();	
+			writeZeroPage();
 			break;
 		case	(byte)0x95: // STA $??,X
-			
+			readZeroPageX();
+			cpuExecSTA();	
+			writeZeroPage();
 			break;
 		case	(byte)0x8D: // STA $????
-			
+			readAbsolute();
+			cpuExecSTA();	
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x9D: // STA $????,X
-			
+			readAbsoluteX();
+			cpuExecSTA();	
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x99: // STA $????,Y
-			
+			readAbsoluteY();
+			cpuExecSTA();	
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x81: // STA ($??,X)
-			
+			readIndexedIndirectX();
+			cpuExecSTA();	
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x91: // STA ($??),Y
-			
+			readIndirectIndexedY();
+			cpuExecSTA();	
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0x86: // STX $??
-			
+			readZeroPage();
+			cpuExecSTX();	
+			writeZeroPage();
 			break;
 		case	(byte)0x96: // STX $??,Y
-			
+			readZeroPageY();
+			cpuExecSTX();	
+			writeZeroPage();
 			break;
 		case	(byte)0x8E: // STX $????
-			
+			readAbsolute();
+			cpuExecSTX();	
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0x84: // STY $??
-			
+			readZeroPage();
+			cpuExecSTY();	
+			writeZeroPage();
 			break;
 		case	(byte)0x94: // STY $??,X
-			
+			readZeroPageX();
+			cpuExecSTY();	
+			writeZeroPage();
 			break;
 		case	(byte)0x8C: // STY $????
-			
+			readAbsolute();
+			cpuExecSTY();	
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0xAA: // TAX
-			
+			cpuExecTAX();
+			_excutedCycles += 2;
 			break;
 		case	(byte)0x8A: // TXA
-			
+			cpuExecTXA();
+			_excutedCycles += 2;
 			break;
 		case	(byte)0xA8: // TAY
-			
+			cpuExecTAY();
+			_excutedCycles += 2;
 			break;
 		case	(byte)0x98: // TYA
-			
+			cpuExecTYA();
+			_excutedCycles += 2;
 			break;
 		case	(byte)0xBA: // TSX
-			
+			cpuExecTSX();
+			_excutedCycles += 2;
 			break;
 		case	(byte)0x9A: // TXS
-		
+			cpuExecTXS();
+			_excutedCycles += 2;
 			break;
 
 		case	(byte)0xC9: // CMP #$??
@@ -783,7 +961,7 @@ public class cpu {
 			
 			break;
 		case	(byte)0x78: { // SEI
-			_register.P |= r6502Register.I_FLAG;
+			_register.P |= cpuRegister.I_FLAG;
 			_excutedCycles += 2;
 		}
 			break;
