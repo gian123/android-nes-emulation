@@ -152,6 +152,24 @@ public class cpu {
 		 setNZFlag(_register.A);
 	}
 	
+	private void cpuExecCMP(){
+		_word_temp = (short)((short)_register.A - (short)_byte_data);
+		setCpuFlag((_word_temp & 0x8000) == 0, cpuRegister.C_FLAG);
+		setNZFlag((byte)_word_temp);
+	}
+	
+	private void cpuExecCPX(){
+		_word_temp = (short)((short)_register.X - (short)_byte_data);
+		setCpuFlag((_word_temp & 0x8000) == 0, cpuRegister.C_FLAG);
+		setNZFlag((byte)_word_temp);
+	}
+	
+	private void cpuExecCPY(){
+		_word_temp = (short)((short)_register.Y - (short)_byte_data);
+		setCpuFlag((_word_temp & 0x8000) == 0, cpuRegister.C_FLAG);
+		setNZFlag((byte)_word_temp);
+	}
+	
 	private void cpuExecDec(){
 		--_byte_data;
 		setNZFlag(_byte_data);
@@ -264,6 +282,71 @@ public class cpu {
 		_register.SP = _register.X;		
 	}
 	
+	private void relJump(){
+		_word_effectiveAddressTemp = _register.PC;
+		_word_effectiveAddress = (short) (_register.PC + (short)_byte_data);
+		_register.PC = _word_effectiveAddress;
+		_excutedCycles += 1;
+		checkEA();
+	}
+	
+	private void cpuExecBCC(){
+		if((_register.P & cpuRegister.C_FLAG) == 0) 
+			relJump();
+	}
+	
+	private void cpuExecBCS(){
+		if((_register.P & cpuRegister.C_FLAG) != 0) 
+			relJump();
+	}
+	
+	private void cpuExecBNE(){
+		if((_register.P & cpuRegister.Z_FLAG) == 0) 
+			relJump();
+	}
+	
+	private void cpuExecBEQ(){
+		if((_register.P & cpuRegister.Z_FLAG) != 0) 
+			relJump();
+	}
+	
+	private void cpuExecBPL(){
+		if((_register.P & cpuRegister.N_FLAG) == 0) 
+			relJump();
+	}
+	
+	private void cpuExecBMI(){
+		if((_register.P & cpuRegister.N_FLAG) != 0) 
+			relJump();
+	}
+	
+	private void cpuExecBVC(){
+		if((_register.P & cpuRegister.V_FLAG) == 0) 
+			relJump();
+	}
+
+	private void cpuExecBVS(){
+		if((_register.P & cpuRegister.V_FLAG) != 0) 
+			relJump();
+	}
+	
+	private void cpuExecJMP(){
+		_register.PC = _cpuMemory.cpuReadWordFromMem(_register.PC);	
+	}
+	
+	private void cpuExecJMPID(){
+		_word_effectiveAddressTemp = _cpuMemory.cpuReadWordFromMem(_register.PC);
+		_word_effectiveAddress = _cpuMemory.readByte(_register.PC);
+		_word_effectiveAddressTemp = (short) ((_word_effectiveAddressTemp & 0xFF00) | 
+									 		 ((_word_effectiveAddressTemp + 1) & 0x00FF));
+		_register.PC = (short) (_word_effectiveAddress + _cpuMemory.readByte(_word_effectiveAddressTemp) * 0x100);
+	}
+//	#define	JMP_ID() {				\
+//		WT = OP6502W(R.PC);			\
+//		EA = RD6502(WT);			\
+//		WT = (WT&0xFF00)|((WT+1)&0x00FF);	\
+//		R.PC = EA+RD6502(WT)*0x100;		\
+//	}
 	/*
 	 * run cpu for certain cycles
 	 */
@@ -853,80 +936,104 @@ public class cpu {
 			break;
 
 		case	(byte)0xC9: // CMP #$??
-			
+			readImmdiate();
+			cpuExecCMP();
 			break;
 		case	(byte)0xC5: // CMP $??
-			
+			readZeroPage();
+			cpuExecCMP();
 			break;
 		case	(byte)0xD5: // CMP $??,X
-			
+			readZeroPageX();
+			cpuExecCMP();
 			break;
 		case	(byte)0xCD: // CMP $????
-			
+			readAbsolute();
+			cpuExecCMP();
 			break;
 		case	(byte)0xDD: // CMP $????,X
-			
+			readAbsoluteX();
+			cpuExecCMP();
 			break;
 		case	(byte)0xD9: // CMP $????,Y
-			
+			readAbsoluteY();
+			cpuExecCMP();
 			break;
 		case	(byte)0xC1: // CMP ($??,X)
-			
+			readIndexedIndirectX();
+			cpuExecCMP();
 			break;
 		case	(byte)0xD1: // CMP ($??),Y
-			
+			readIndirectIndexedY();
+			cpuExecCMP();
 			break;
 
 		case	(byte)0xE0: // CPX #$??
-			
+			readImmdiate();
+			cpuExecCPX();
 			break;
 		case	(byte)0xE4: // CPX $??
-			
+			readZeroPage();
+			cpuExecCPX();
 			break;
 		case	(byte)0xEC: // CPX $????
-			
+			readAbsolute();
+			cpuExecCPX();
 			break;
 
 		case	(byte)0xC0: // CPY #$??
-			
+			readImmdiate();
+			cpuExecCPY();
 			break;
 		case	(byte)0xC4: // CPY $??
-			
+			readZeroPage();
+			cpuExecCPY();
 			break;
 		case	(byte)0xCC: // CPY $????
-			
+			readAbsolute();
+			cpuExecCPY();
 			break;
 
 		case	(byte)0x90: // BCC
-			
+			readImmdiate();
+			cpuExecBCC();
 			break;
 		case	(byte)0xB0: // BCS
-			
+			readImmdiate();
+			cpuExecBCS();
 			break;
 		case	(byte)0xF0: // BEQ
-			
+			readImmdiate();
+			cpuExecBEQ();
 			break;
 		case	(byte)0x30: // BMI
-			
+			readImmdiate();
+			cpuExecBMI();
 			break;
 		case	(byte)0xD0: // BNE
-			
+			readImmdiate();
+			cpuExecBNE();
 			break;
 		case	(byte)0x10: // BPL
-			
+			readImmdiate();
+			cpuExecBPL();
 			break;
 		case	(byte)0x50: // BVC
-			
+			readImmdiate();
+			cpuExecBVC();
 			break;
 		case	(byte)0x70: // BVS
-			
+			readImmdiate();
+			cpuExecBVS();
 			break;
 
 		case	(byte)0x4C: // JMP $????
-			
+			cpuExecJMP();
+			_excutedCycles += 3;
 			break;
 		case	(byte)0x6C: // JMP ($????)
-			
+			cpuExecJMPID();
+			_excutedCycles += 5;
 			break;
 
 		case	(byte)0x20: // JSR
