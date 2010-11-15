@@ -341,11 +341,202 @@ public class cpu {
 									 		 ((_word_effectiveAddressTemp + 1) & 0x00FF));
 		_register.PC = (short) (_word_effectiveAddress + _cpuMemory.readByte(_word_effectiveAddressTemp) * 0x100);
 	}
-//	#define	JMP_ID() {				\
-//		WT = OP6502W(R.PC);			\
-//		EA = RD6502(WT);			\
-//		WT = (WT&0xFF00)|((WT+1)&0x00FF);	\
-//		R.PC = EA+RD6502(WT)*0x100;		\
+	
+	private void cpuExecJSR(){
+		_word_effectiveAddress = _cpuMemory.cpuReadWordFromMem(_register.PC);
+		_register.PC ++;
+		cpuExecPUSH((byte)(_register.PC >> 8));
+		cpuExecPUSH((byte)(_register.PC & 0xFF));
+		_register.PC = _word_effectiveAddress;
+	}
+	
+	
+	private void cpuExecPUSH(byte value){
+		_cpuMemory._cpuRam[(_register.SP --) & 0xFF] = value;
+	}
+	
+	private byte cpuExecPOP(){
+		return _cpuMemory._cpuRam[(++ _register.SP) & 0xFF];
+	}
+	
+	private void cpuExecRTS(){
+		_register.PC = cpuExecPOP();
+		_register.PC |= cpuExecPOP() * 0x0100;
+		_register.PC ++;		
+	}
+	
+	private void cpuExecRTI(){
+		_register.P = (byte) (cpuExecPOP() | cpuRegister.R_FLAG);
+		_register.PC = cpuExecPOP();
+		_register.PC |= cpuExecPOP() * 0x0100;
+	}
+
+	private void cpuExecCLC(){
+		_register.P &= ~cpuRegister.C_FLAG;
+	}
+	
+	private void cpuExecCLD(){
+		_register.P &= ~cpuRegister.D_FLAG;
+	}
+	
+	private void cpuExecCLI(){
+		_register.P &= ~cpuRegister.I_FLAG;
+	}
+	
+	private void cpuExecCLV(){
+		_register.P &= ~cpuRegister.V_FLAG;
+	}
+	
+	private void cpuExecSEC(){
+		_register.P |= cpuRegister.C_FLAG;
+	}
+	
+	private void cpuExecSED(){
+		_register.P |= cpuRegister.D_FLAG;
+	}
+	
+	private void cpuExecSEI(){
+		_register.P |= cpuRegister.I_FLAG;
+	}
+
+	private void cpuExecBRK(){
+		_register.PC ++;
+		cpuExecPUSH((byte) (_register.PC >> 8));
+		cpuExecPUSH((byte) (_register.PC & 0xFF));
+		setCpuFlag(true, cpuRegister.B_FLAG);
+		cpuExecPUSH(cpuRegister.B_FLAG);
+		setCpuFlag(true, cpuRegister.I_FLAG);
+		_register.PC = _cpuMemory.cpuReadWordFromMem(cpuRegister.IRQ_VECTOR);
+	}
+	
+	private void cpuExecANC(){
+		_register.A = _byte_data;
+		setNZFlag(_register.A);
+		setCpuFlag((_register.P & cpuRegister.N_FLAG) != 0, cpuRegister.C_FLAG);
+	}
+	
+	private void cpuExecANE(){
+		_register.A = (byte) ((_register.A | 0xEE) & _register.X & _byte_data);
+		setNZFlag(_register.A);	
+	}
+	
+	private void cpuExecARR(){
+		_byte_data &= _register.A;
+		_register.A = (byte) ((_byte_data >> 1) | ((_register.P & cpuRegister.C_FLAG) << 7));
+		setNZFlag(_register.A);
+		setCpuFlag((_register.A & 0x40) != 0, cpuRegister.C_FLAG);
+		setCpuFlag(((_register.A >> 6) ^ (_register.A >> 5)) != 0, cpuRegister.V_FLAG);
+	}
+	
+	private void cpuExecASR(){
+		_byte_data &= _register.A;
+		setCpuFlag((_byte_data & 0x01) != 0, cpuRegister.C_FLAG);
+		_register.A = (byte) (_byte_data >> 1);
+		setNZFlag(_register.A);
+	}
+	
+	private void cpuExecDCP(){
+		_byte_data --;
+		cpuExecCMP();
+	}
+	
+	private void cpuExecDOP(){
+		_register.PC ++;
+	}
+	
+	private void cpuExecISB(){
+		_byte_data ++;
+		cpuExecSBC();
+	}
+	
+	private void cpuExecLAS(){
+		_register.A = _register.X = _register.SP = (byte) (_register.SP & _byte_data);
+		setNZFlag(_register.A);
+	}
+	
+	private void cpuExecLAX(){
+		_register.A = _byte_data;
+		_register.X = _register.A;
+		setNZFlag(_register.A);
+	}
+
+	private void cpuExecLXA(){
+		_register.A = _register.X = (byte) ((_register.A | 0xEE) & _byte_data);
+		setNZFlag(_register.A);
+	}
+
+	private void cpuExecRLA(){
+		if ((_register.P & cpuRegister.C_FLAG) != 0){
+			setCpuFlag((_byte_data & 0x80) != 0, cpuRegister.C_FLAG);
+			_byte_data = (byte) ((_byte_data << 1) | 0x01);
+		}
+		else {
+			setCpuFlag((_byte_data & 0x80) != 0, cpuRegister.C_FLAG);
+			_byte_data <<= 1;
+		}
+		_register.A &= _byte_data;
+		setNZFlag(_register.A);
+	}
+	private void cpuExecRRA(){
+		if ((_register.P & cpuRegister.C_FLAG) != 0){
+			setCpuFlag((_byte_data & 0x01) != 0, cpuRegister.C_FLAG);
+			_byte_data = (byte) ((_byte_data >> 1) | 0x80);
+		}
+		else {
+			setCpuFlag((_byte_data & 0x01) != 0, cpuRegister.C_FLAG);
+			_byte_data >>= 1;
+		}
+		cpuExecADC();
+	}
+	
+	private void cpuExecSAX(){
+		_byte_data = (byte) (_register.A & _register.X);
+	}
+	
+	private void cpuExecSBX() {		
+		_word_temp = (short) ((_register.A & _register.X) -_byte_data);
+		setCpuFlag(_word_temp < 0x100, cpuRegister.C_FLAG);
+		_register.X = (byte) (_word_temp & 0xFF);
+		setNZFlag(_register.X);
+	}
+
+	private void cpuExecSHA(){
+		_byte_data = (byte) (_register.A & _register.X & ((_word_effectiveAddress >> 8) + 1));
+	}
+
+	private void cpuExecSHS(){
+		_register.SP = (byte) (_register.A & _register.X);
+		_byte_data = (byte) (_register.SP & ((_word_effectiveAddress >> 8) + 1));
+	}
+
+	private void cpuExecSHX(){
+		_byte_data = (byte) (_register.X & ((_word_effectiveAddress >> 8) + 1));
+	}
+
+	private void cpuExecSHY(){
+		_byte_data = (byte) (_register.Y & ((_word_effectiveAddress >> 8) + 1));
+	}
+
+	private void cpuExecSLO(){
+		setCpuFlag((_byte_data & 0x80) != 0, cpuRegister.C_FLAG);
+		_byte_data <<= 1;
+		_register.A |= _byte_data;
+		setNZFlag(_register.A);
+	} 
+
+	private void cpuExecSRE(){
+		setCpuFlag((_byte_data & 0x01) != 0, cpuRegister.C_FLAG);
+		_byte_data >>= 1;
+		_register.A ^= _byte_data;
+		setNZFlag(_register.A);
+	}
+
+	private void cpuExecTOP(){
+		_register.PC += 2;
+	}
+//
+//	#define	TOP()	{			\
+//		R.PC += 2;			\
 //	}
 	/*
 	 * run cpu for certain cycles
@@ -1037,346 +1228,405 @@ public class cpu {
 			break;
 
 		case	(byte)0x20: // JSR
-			
+			cpuExecJSR();
+			_excutedCycles += 6;
 			break;
 
 		case	(byte)0x40: // RTI
-			
+			cpuExecRTI();
+			_excutedCycles += 6;
 			break;
 		case	(byte)0x60: // RTS
-			
+			cpuExecRTS();
+			_excutedCycles += 6;
 			break;
-
 
 		case	(byte)0x18: // CLC
-			
+			cpuExecCLC();
+			_excutedCycles += 2;
 			break;
 		case	(byte)0xD8: // CLD
-			
+			cpuExecCLD();
+			_excutedCycles += 2;
 			break;
 		case	(byte)0x58: // CLI
-			
+			cpuExecCLI();
+			_excutedCycles += 2;
 			break;
 		case	(byte)0xB8: // CLV
-			
+			cpuExecCLV();
+			_excutedCycles += 2;
 			break;
-
 		case	(byte)0x38: // SEC
-			
+			cpuExecSEC();
+			_excutedCycles += 2;
 			break;
 		case	(byte)0xF8: // SED
-			
+			cpuExecSED();
+			_excutedCycles += 2;
 			break;
 		case	(byte)0x78: { // SEI
-			_register.P |= cpuRegister.I_FLAG;
+			cpuExecSEI();
 			_excutedCycles += 2;
 		}
 			break;
 
-// スタック系
 		case	(byte)0x48: // PHA
-			
+			cpuExecPUSH(_register.A);
+			_excutedCycles += 3;
 			break;
 		case	(byte)0x08: // PHP
-			
+			cpuExecPUSH((byte) (_register.P | cpuRegister.B_FLAG));
+			_excutedCycles += 3;
 			break;
 		case	(byte)0x68: // PLA (N-----Z-)
-			
+			_register.A = cpuExecPOP();
+			setNZFlag(_register.A);
+			_excutedCycles += 4;
 			break;
 		case	(byte)0x28: // PLP
-			
+			_register.P = (byte) (cpuExecPOP() | cpuRegister.R_FLAG);
+			_excutedCycles += 4;
 			break;
 
-// その他
 		case	(byte)0x00: // BRK
-			
+			cpuExecBRK();
+			_excutedCycles += 7;
 			break;
 
 		case	(byte)0xEA: // NOP
-			//ADD_CYCLE(2);
+			_excutedCycles += 2;
 			break;
 
-// 未公開命令群
 		case	0x0B: // ANC #$??
 		case	0x2B: // ANC #$??
-			//MR_IM(); ANC();
-			//ADD_CYCLE(2);
+			readImmdiate();
+			cpuExecANC();						
 			break;
-
 		case	(byte)0x8B: // ANE #$??
-			//MR_IM(); ANE();
-			//ADD_CYCLE(2);
+			readImmdiate();
+			cpuExecANE();			
 			break;
 
 		case	(byte)0x6B: // ARR #$??
-			//MR_IM(); ARR();
-			//ADD_CYCLE(2);
+			readImmdiate();
+			cpuExecARR();			
 			break;
 
 		case	(byte)0x4B: // ASR #$??
-			//MR_IM(); ASR();
-			//ADD_CYCLE(2);
+			readImmdiate();
+			cpuExecASR();
 			break;
 
 		case	(byte)0xC7: // DCP $??
-			//MR_ZP(); DCP(); MW_ZP();
-			//ADD_CYCLE(5);
+			readZeroPage();
+			cpuExecDCP();
+			writeZeroPage();			
 			break;
 		case	(byte)0xD7: // DCP $??,X
-			//MR_ZX(); DCP(); MW_ZP();
-			//ADD_CYCLE(6);
+			readZeroPageX();
+			cpuExecDCP();
+			writeZeroPage();		
 			break;
 		case	(byte)0xCF: // DCP $????
-			//MR_AB(); DCP(); MW_EA();
-			//ADD_CYCLE(6);
+			readAbsolute();
+			cpuExecDCP();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0xDF: // DCP $????,X
-			//MR_AX(); DCP(); MW_EA();
-			//ADD_CYCLE(7);
+			readAbsoluteX();
+			cpuExecDCP();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0xDB: // DCP $????,Y
+			readAbsoluteY();
+			cpuExecDCP();
+			writeEffectiveAddress();
 			//MR_AY(); DCP(); MW_EA();
 			//ADD_CYCLE(7);
 			break;
 		case	(byte)0xC3: // DCP ($??,X)
-			//MR_IX(); DCP(); MW_EA();
-			//ADD_CYCLE(8);
+			readIndexedIndirectX();
+			cpuExecDCP();
+			writeEffectiveAddress();		
 			break;
 		case	(byte)0xD3: // DCP ($??),Y
-			//MR_IY(); DCP(); MW_EA();
-			//ADD_CYCLE(8);
+			readIndirectIndexedY();
+			cpuExecDCP();
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0xE7: // ISB $??
-			//MR_ZP(); ISB(); MW_ZP();
-			//ADD_CYCLE(5);
+			readZeroPage();
+			cpuExecISB();
+			writeZeroPage();			
 			break;
 		case	(byte)0xF7: // ISB $??,X
-			//MR_ZX(); ISB(); MW_ZP();
-			//ADD_CYCLE(5);
+			readZeroPageX();
+			cpuExecISB();
+			writeZeroPage();
 			break;
 		case	(byte)0xEF: // ISB $????
-			//MR_AB(); ISB(); MW_EA();
-			//ADD_CYCLE(5);
+			readAbsolute();
+			cpuExecISB();
+			writeEffectiveAddress();		
 			break;
 		case	(byte)0xFF: // ISB $????,X
-			//MR_AX(); ISB(); MW_EA();
-			//ADD_CYCLE(5);
+			readAbsoluteX();
+			cpuExecISB();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0xFB: // ISB $????,Y
-			//MR_AY(); ISB(); MW_EA();
-			//ADD_CYCLE(5);
+			readAbsoluteX();
+			cpuExecISB();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0xE3: // ISB ($??,X)
-			//MR_IX(); ISB(); MW_EA();
-			//ADD_CYCLE(5);
+			readIndexedIndirectX();
+			cpuExecISB();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0xF3: // ISB ($??),Y
-			//MR_IY(); ISB(); MW_EA();
-			//ADD_CYCLE(5);
+			readIndirectIndexedY();
+			cpuExecISB();
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0xBB: // LAS $????,Y
-			//MR_AY(); LAS(); CHECK_EA();
-			//ADD_CYCLE(4);
+			readAbsoluteY();
+			cpuExecLAS();
 			break;
-
-
 		case	(byte)0xA7: // LAX $??
-			//MR_ZP(); LAX();
-			//ADD_CYCLE(3);
+			readZeroPage();
+			cpuExecLAX();
 			break;
 		case	(byte)0xB7: // LAX $??,Y
-			//MR_ZY(); LAX();
-			//ADD_CYCLE(4);
+			readZeroPageY();
+			cpuExecLAX();
 			break;
 		case	(byte)0xAF: // LAX $????
-			//MR_AB(); LAX();
-			//ADD_CYCLE(4);
+			readAbsolute();
+			cpuExecLAX();
 			break;
 		case	(byte)0xBF: // LAX $????,Y
-			//MR_AY(); LAX(); CHECK_EA();
-			//ADD_CYCLE(4);
+			readAbsoluteY();
+			cpuExecLAX();
 			break;
 		case	(byte)0xA3: // LAX ($??,X)
-			//MR_IX(); LAX();
-			//ADD_CYCLE(6);
+			readIndexedIndirectX();
+			cpuExecLAX();
 			break;
 		case	(byte)0xB3: // LAX ($??),Y
-			//MR_IY(); LAX(); CHECK_EA();
-			//ADD_CYCLE(5);
+			readIndirectIndexedY();
+			cpuExecLAX();
 			break;
 
 		case	(byte)0xAB: // LXA #$??
-			//MR_IM(); LXA();
-			//ADD_CYCLE(2);
+			readImmdiate();
+			cpuExecLXA();
 			break;
 
 		case	(byte)0x27: // RLA $??
-			//MR_ZP(); RLA(); MW_ZP();
-			//ADD_CYCLE(5);
+			readZeroPage();
+			cpuExecRLA();
+			writeZeroPage();			
 			break;
 		case	(byte)0x37: // RLA $??,X
-			//MR_ZX(); RLA(); MW_ZP();
-			//ADD_CYCLE(6);
+			readZeroPageX();
+			cpuExecRLA();
+			writeZeroPage();
 			break;
 		case	(byte)0x2F: // RLA $????
-			//MR_AB(); RLA(); MW_EA();
-			//ADD_CYCLE(6);
+			readAbsolute();
+			cpuExecRLA();
+			writeZeroPage();
 			break;
 		case	(byte)0x3F: // RLA $????,X
-			//MR_AX(); RLA(); MW_EA();
-			//ADD_CYCLE(7);
+			readAbsoluteX();
+			cpuExecRLA();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x3B: // RLA $????,Y
-			//MR_AY(); RLA(); MW_EA();
-			//ADD_CYCLE(7);
+			readAbsoluteY();
+			cpuExecRLA();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x23: // RLA ($??,X)
-			//MR_IX(); RLA(); MW_EA();
-			//ADD_CYCLE(8);
+			readIndexedIndirectX();
+			cpuExecRLA();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x33: // RLA ($??),Y
-			//MR_IY(); RLA(); MW_EA();
-			//ADD_CYCLE(8);
+			readIndirectIndexedY();
+			cpuExecRLA();
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0x67: // RRA $??
-			//MR_ZP(); RRA(); MW_ZP();
-			//ADD_CYCLE(5);
+			readZeroPage();
+			cpuExecRRA();
+			writeZeroPage();
 			break;
 		case	(byte)0x77: // RRA $??,X
-			//MR_ZX(); RRA(); MW_ZP();
-			//ADD_CYCLE(6);
+			readZeroPageX();
+			cpuExecRRA();
+			writeZeroPage();
 			break;
 		case	(byte)0x6F: // RRA $????
-			//MR_AB(); RRA(); MW_EA();
-			//ADD_CYCLE(6);
+			readAbsolute();
+			cpuExecRRA();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x7F: // RRA $????,X
-			//MR_AX(); RRA(); MW_EA();
-			//ADD_CYCLE(7);
+			readAbsoluteX();
+			cpuExecRRA();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x7B: // RRA $????,Y
-			//MR_AY(); RRA(); MW_EA();
-			//ADD_CYCLE(7);
+			readAbsoluteY();
+			cpuExecRRA();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x63: // RRA ($??,X)
-			//MR_IX(); RRA(); MW_EA();
-			//ADD_CYCLE(8);
+			readIndexedIndirectX();
+			cpuExecRRA();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x73: // RRA ($??),Y
-			//MR_IY(); RRA(); MW_EA();
-			//ADD_CYCLE(8);
+			readIndirectIndexedY();
+			cpuExecRRA();
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0x87: // SAX $??
-			//MR_ZP(); SAX(); MW_ZP();
-			//ADD_CYCLE(3);
+			readZeroPage();
+			cpuExecSAX();
+			writeZeroPage();			
 			break;
 		case	(byte)0x97: // SAX $??,Y
-			//MR_ZY(); SAX(); MW_ZP();
-			//ADD_CYCLE(4);
+			readZeroPageY();
+			cpuExecSAX();
+			writeZeroPage();			
 			break;
 		case	(byte)0x8F: // SAX $????
-			//MR_AB(); SAX(); MW_EA();
-			//ADD_CYCLE(4);
+			readAbsolute();
+			cpuExecSAX();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x83: // SAX ($??,X)
-			//MR_IX(); SAX(); MW_EA();
-			//ADD_CYCLE(6);
+			readIndexedIndirectX();
+			cpuExecSAX();
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0xCB: // SBX #$??
-			//MR_IM(); SBX();
-			//ADD_CYCLE(2);
+			readImmdiate();
+			cpuExecSBX();
 			break;
 
 		case	(byte)0x9F: // SHA $????,Y
-			//MR_AY(); SHA(); MW_EA();
-			//ADD_CYCLE(5);
+			readAbsoluteY();
+			cpuExecSHA();
+			writeEffectiveAddress();			
 			break;
 		case	(byte)0x93: // SHA ($??),Y
-			//MR_IY(); SHA(); MW_EA();
-			//ADD_CYCLE(6);
+			readIndirectIndexedY();
+			cpuExecSHA();
+			writeEffectiveAddress();
 			break;
-
 		case	(byte)0x9B: // SHS $????,Y
-			//MR_AY(); SHS(); MW_EA();
-			//ADD_CYCLE(5);
+			readAbsoluteY();
+			cpuExecSHS();
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0x9E: // SHX $????,Y
-			//MR_AY(); SHX(); MW_EA();
-			//ADD_CYCLE(5);
+			readAbsoluteY();
+			cpuExecSHX();
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0x9C: // SHY $????,X
-			//MR_AX(); SHY(); MW_EA();
-			//ADD_CYCLE(5);
+			readAbsoluteX();
+			cpuExecSHY();
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0x07: // SLO $??
-			//MR_ZP(); SLO(); MW_ZP();
-			//ADD_CYCLE(5);
+			readZeroPage();
+			cpuExecSLO();
+			writeZeroPage();
 			break;
 		case	(byte)0x17: // SLO $??,X
-			//MR_ZX(); SLO(); MW_ZP();
-			//ADD_CYCLE(6);
+			readZeroPageX();
+			cpuExecSLO();
+			writeZeroPage();
 			break;
 		case	(byte)0x0F: // SLO $????
-			//MR_AB(); SLO(); MW_EA();
-			//ADD_CYCLE(6);
+			readAbsolute();
+			cpuExecSLO();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x1F: // SLO $????,X
-			//MR_AX(); SLO(); MW_EA();
-			//ADD_CYCLE(7);
+			readAbsoluteX();
+			cpuExecSLO();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x1B: // SLO $????,Y
-			//MR_AY(); SLO(); MW_EA();
-			//ADD_CYCLE(7);
+			readAbsoluteY();
+			cpuExecSLO();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x03: // SLO ($??,X)
-			//MR_IX(); SLO(); MW_EA();
-			//ADD_CYCLE(8);
+			readIndexedIndirectX();
+			cpuExecSLO();
+			writeEffectiveAddress();
 			break;
 		case	(byte)0x13: // SLO ($??),Y
-			//MR_IY(); SLO(); MW_EA();
-			//ADD_CYCLE(8);
+			readIndirectIndexedY();
+			cpuExecSLO();
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0x47: // SRE $??
-			//MR_ZP(); SRE(); MW_ZP();
-			//ADD_CYCLE(5);
+			readZeroPage();
+			cpuExecSRE();
+			writeZeroPage();
 			break;
 		case	(byte)0x57: // SRE $??,X
-			//MR_ZX(); SRE(); MW_ZP();
-			//ADD_CYCLE(6);
+			readZeroPageX();
+			cpuExecSRE();
+			writeZeroPage();
 			break;
 		case	0x4F: // SRE $????
-			//MR_AB(); SRE(); MW_EA();
-			//ADD_CYCLE(6);
+			readAbsolute();
+			cpuExecSRE();
+			writeEffectiveAddress();
 			break;
 		case	0x5F: // SRE $????,X
-			//MR_AX(); SRE(); MW_EA();
-			//ADD_CYCLE(7);
+			readAbsoluteX();
+			cpuExecSRE();
+			writeEffectiveAddress();
 			break;
 		case	0x5B: // SRE $????,Y
-			//MR_AY(); SRE(); MW_EA();
-			//ADD_CYCLE(7);
+			readAbsoluteY();
+			cpuExecSRE();
+			writeEffectiveAddress();
 			break;
 		case	0x43: // SRE ($??,X)
-			//MR_IX(); SRE(); MW_EA();
-			//ADD_CYCLE(8);
+			readIndexedIndirectX();
+			cpuExecSRE();
+			writeEffectiveAddress();
 			break;
 		case	0x53: // SRE ($??),Y
-			//MR_IY(); SRE(); MW_EA();
-			//ADD_CYCLE(8);
+			readIndirectIndexedY();
+			cpuExecSRE();
+			writeEffectiveAddress();
 			break;
 
 		case	(byte)0xEB: // SBC #$?? (Unofficial)
-			//MR_IM(); SBC();
-			//ADD_CYCLE(2);
+			readImmdiate();
+			cpuExecSBC();
 			break;
 
 		case	0x1A: // NOP (Unofficial)
@@ -1437,4 +1687,6 @@ public class cpu {
 			break;
 		}
 	}
+
+	
 }
