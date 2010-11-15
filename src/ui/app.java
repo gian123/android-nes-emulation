@@ -11,12 +11,10 @@ public class app {
 		
 		window wnd = new window();
 		wnd.setNes(g_nes);
+		wnd.initGL();
 		
 		wnd.showWindow();
-		while(true){
-			//timer.
-			wnd.paint();
-		}	
+		
 //		nes g_nes = new nes();
 //		g_nes.readFromFile("mario.nes");
 //		//g_nes.reset();
